@@ -96,6 +96,8 @@ export class ElsaDataPipelineStack extends Stack {
       cpu: 1024,
     });
 
+    pipeline.addStage(devStage);
+
     /*const prodStage = new ElsaDataBuildStage(this, "Prod", {
       env: {
         account: "472057503814",
@@ -113,8 +115,8 @@ export class ElsaDataPipelineStack extends Stack {
       cpu: 1024,
     }); */
 
-    /*
-    pipeline.addStage(devStage, {
+    /*pipeline.addStage(prodStage, {
+      pre: [new pipelines.ManualApprovalStep("PromoteToProd")],
       post: [
         new pipelines.ShellStep("Validate Endpoint", {
           envFromCfnOutputs: {
@@ -128,10 +130,6 @@ export class ElsaDataPipelineStack extends Stack {
           ],
         }),
       ],
-    }); */
-
-    /*pipeline.addStage(prodStage, {
-      pre: [new pipelines.ManualApprovalStep("PromoteToProd")],
     }); */
   }
 }
