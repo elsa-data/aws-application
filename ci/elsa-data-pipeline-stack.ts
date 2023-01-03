@@ -30,8 +30,6 @@ export class ElsaDataPipelineStack extends Stack {
     );
 
     const pipeline = new pipelines.CodePipeline(this, "Pipeline", {
-      // should normally be commented out - only use when debugging pipeline itself
-      // selfMutation: false,
       // turned on because our stack makes docker assets
       dockerEnabledForSynth: true,
       dockerEnabledForSelfMutation: true,
@@ -39,13 +37,11 @@ export class ElsaDataPipelineStack extends Stack {
         buildEnvironment: {
           buildImage: LinuxBuildImage.STANDARD_6_0,
         },
-        // see https://github.com/aws/aws-cdk/issues/20739 (should be able to remove soon)
         partialBuildSpec: BuildSpec.fromObject({
           phases: {
             install: {
-              // bump old nodejs to 16 or else cdk don't work
               commands: [
-                "n 16",
+                "n 18",
                 "corepack enable",
                 "corepack prepare pnpm@latest --activate",
               ],
@@ -66,9 +62,9 @@ export class ElsaDataPipelineStack extends Stack {
         env: {},
         commands: [
           "cd ci",
-          "pnpm ci",
+          "pnpm install",
           // our cdk is configured to use ts-node - so we don't need any typescript build step - just synth
-          "pnpm cdk synth",
+          "pnpm exec cdk synth",
         ],
         rolePolicyStatements: [
           new PolicyStatement({

@@ -65,7 +65,7 @@ export class ElsaDataApplicationStack extends NestedStack {
 
     const dockerImageFolder = path.join(
       __dirname,
-      "../../images/elsa-data-docker-image"
+      "../../../images/elsa-data-docker-image"
     );
 
     const asset = new DockerImageAsset(this, "ElsaDataDockerImage", {
@@ -238,7 +238,7 @@ export class ElsaDataApplicationStack extends NestedStack {
 
     const dockerImageFolder = path.join(
       __dirname,
-      "../../images/elsa-data-command-invoke-lambda-docker-image"
+      "../../../images/elsa-data-command-invoke-lambda-docker-image"
     );
 
     // this command lambda does almost nothing itself - all it does is trigger the creation of
