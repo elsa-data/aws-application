@@ -21,6 +21,8 @@ export class ElsaDataStack extends Stack {
   ) {
     super(scope, id, props);
 
+    console.log(JSON.stringify(props, null, 2));
+
     /**
      * Importing existing UMCCR Resource
      */
@@ -119,7 +121,7 @@ export class ElsaDataStack extends Stack {
       },
     });
 
-    /*new ElsaDataApplicationStack(this, "ElsaData", {
+    new ElsaDataApplicationStack(this, "ElsaData", {
       vpc: vpc,
       hostedZoneCertArn: certApse2Arn,
       hostedPrefix: hostedPrefix,
@@ -127,6 +129,6 @@ export class ElsaDataStack extends Stack {
       cloudMapService: service,
       edgeDbDsnNoPassword: edgeDb.dsnForEnvironmentVariable,
       edgeDbPasswordSecret: edgeDb.edgeDbPasswordSecret,
-    }); */
+    });
   }
 }

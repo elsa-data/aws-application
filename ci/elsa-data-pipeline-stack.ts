@@ -32,7 +32,6 @@ export class ElsaDataPipelineStack extends Stack {
     const pipeline = new pipelines.CodePipeline(this, "Pipeline", {
       // turned on because our stack makes docker assets
       dockerEnabledForSynth: true,
-      dockerEnabledForSelfMutation: true,
       crossAccountKeys: true,
       codeBuildDefaults: {
         buildEnvironment: {
@@ -62,9 +61,9 @@ export class ElsaDataPipelineStack extends Stack {
         ),
         commands: [
           "cd ci",
-          "pnpm install",
+          "npm ci",
           // our cdk is configured to use ts-node - so we don't need any typescript build step - just synth
-          "pnpm exec cdk synth",
+          "npx cdk synth -v",
         ],
         primaryOutputDirectory: "ci/cdk.out",
         // a blank env needs to be left here in order for the assumerole/cross account permissions in CDK to work
