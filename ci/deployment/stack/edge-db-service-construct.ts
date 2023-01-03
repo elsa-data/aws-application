@@ -124,8 +124,8 @@ export class EdgeDbServiceConstruct extends Construct {
 
     if (props.isDevelopment) env.EDGEDB_SERVER_ADMIN_UI = "enabled";
 
-    console.log(env);
-    console.log(secrets);
+    // console.log(env);
+    // console.log(secrets);
 
     const container = taskDefinition.addContainer(containerName, {
       // https://hub.docker.com/r/edgedb/edgedb/tags

@@ -117,10 +117,6 @@ export class ElsaDataStack extends Stack {
           uiPort: 4001,
         },
       },
-      env: {
-        account: process.env.CDK_DEFAULT_ACCOUNT,
-        region: process.env.CDK_DEFAULT_REGION,
-      },
     });
 
     new ElsaDataApplicationStack(this, "ElsaData", {
