@@ -69,7 +69,7 @@ export class ElsaDataPipelineStack extends Stack {
         primaryOutputDirectory: "ci/cdk.out",
         // a blank env needs to be left here in order for the assumerole/cross account permissions in CDK to work
         env: {},
-        /*rolePolicyStatements: [
+        rolePolicyStatements: [
           new PolicyStatement({
             actions: ["sts:AssumeRole"],
             resources: ["*"],
@@ -79,7 +79,7 @@ export class ElsaDataPipelineStack extends Stack {
               },
             },
           }),
-        ],*/
+        ],
       }),
     });
 
