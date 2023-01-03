@@ -33,6 +33,7 @@ export class ElsaDataPipelineStack extends Stack {
       // turned on because our stack makes docker assets
       dockerEnabledForSynth: true,
       dockerEnabledForSelfMutation: true,
+      crossAccountKeys: true,
       codeBuildDefaults: {
         buildEnvironment: {
           buildImage: LinuxBuildImage.STANDARD_6_0,
@@ -66,6 +67,8 @@ export class ElsaDataPipelineStack extends Stack {
           "pnpm exec cdk synth",
         ],
         primaryOutputDirectory: "ci/cdk.out",
+        // a blank env needs to be left here in order for the assumerole/cross account permissions in CDK to work
+        env: {},
         rolePolicyStatements: [
           new PolicyStatement({
             actions: ["sts:AssumeRole"],
@@ -78,7 +81,6 @@ export class ElsaDataPipelineStack extends Stack {
           }),
         ],
       }),
-      crossAccountKeys: true,
     });
 
     const hostedPrefix = "elsa";
