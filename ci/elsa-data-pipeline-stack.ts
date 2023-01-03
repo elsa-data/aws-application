@@ -59,13 +59,13 @@ export class ElsaDataPipelineStack extends Stack {
             connectionArn: codeStarArn,
           }
         ),
-        env: {},
         commands: [
           "cd ci",
           "pnpm install",
           // our cdk is configured to use ts-node - so we don't need any typescript build step - just synth
           "pnpm exec cdk synth",
         ],
+        primaryOutputDirectory: "ci/cdk.out",
         rolePolicyStatements: [
           new PolicyStatement({
             actions: ["sts:AssumeRole"],
