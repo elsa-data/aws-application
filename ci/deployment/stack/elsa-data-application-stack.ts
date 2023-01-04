@@ -11,7 +11,7 @@ import {
 import { Construct } from "constructs";
 import * as path from "path";
 import { DockerImageAsset, Platform } from "aws-cdk-lib/aws-ecr-assets";
-import { DockerServiceWithHttpsLoadBalancerConstruct } from "../lib/docker-service-with-https-load-balancer-construct";
+import { DockerServiceWithHttpsLoadBalancerConstruct } from "../construct/docker-service-with-https-load-balancer-construct";
 import { Policy, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { ISecret } from "aws-cdk-lib/aws-secretsmanager";
 import { Bucket, BucketEncryption } from "aws-cdk-lib/aws-s3";
@@ -207,8 +207,8 @@ export class ElsaDataApplicationStack extends NestedStack {
   }
 
   /**
-   * Add a command lambda that can start REMS tasks in the cluster for the purposes of
-   * executing REMS docker commands.
+   * Add a command lambda that can start Elsa Data tasks in the cluster for the purposes of
+   * executing Elsa Data docker commands.
    *
    * @param vpc
    * @param subnetSelection

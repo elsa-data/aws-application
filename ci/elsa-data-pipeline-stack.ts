@@ -95,6 +95,9 @@ export class ElsaDataPipelineStack extends Stack {
       hostedPrefix: hostedPrefix,
       memoryLimitMiB: 2048,
       cpu: 1024,
+      hostedZoneCertificateSsm: "cert_apse2_arn",
+      hostedZoneNameSsm: "/hosted_zone/umccr/name",
+      hostedZoneIdSsm: "/hosted_zone/umccr/id",
     });
 
     pipeline.addStage(devStage);

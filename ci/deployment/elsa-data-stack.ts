@@ -1,17 +1,20 @@
-import { aws_ecs as ecs, Stack, StackProps } from "aws-cdk-lib";
-import { Construct } from "constructs";
 import {
-  aws_ec2 as ec2,
-  aws_ssm as ssm,
+  aws_ecs as ecs,
   aws_route53 as route53,
+  aws_ssm as ssm,
+  Stack,
+  StackProps,
 } from "aws-cdk-lib";
+import { Construct } from "constructs";
 import { EdgeDbStack } from "./stack/edge-db-stack";
-import { smartVpcConstruct } from "./lib/vpc";
+import { smartVpcConstruct } from "./construct/vpc";
 import { ElsaDataApplicationStack } from "./stack/elsa-data-application-stack";
 import { Secret } from "aws-cdk-lib/aws-secretsmanager";
 import { StringParameter } from "aws-cdk-lib/aws-ssm";
 import { HttpNamespace, Service } from "aws-cdk-lib/aws-servicediscovery";
 import { ElsaDataStackSettings } from "./elsa-data-stack-settings";
+import { Certificate } from "aws-cdk-lib/aws-certificatemanager";
+import { InstanceClass, InstanceSize, InstanceType } from "aws-cdk-lib/aws-ec2";
 
 export class ElsaDataStack extends Stack {
   constructor(
@@ -21,26 +24,22 @@ export class ElsaDataStack extends Stack {
   ) {
     super(scope, id, props);
 
-    console.log(JSON.stringify(props, null, 2));
-
     /**
      * Importing existing UMCCR Resource
      */
     const vpc = smartVpcConstruct(this, "VPC", "main-vpc");
     const hostedZoneName = ssm.StringParameter.valueFromLookup(
       this,
-      "/hosted_zone/umccr/name"
+      props.hostedZoneNameSsm
     );
     const hostedZoneId = ssm.StringParameter.valueFromLookup(
       this,
-      "/hosted_zone/umccr/id"
+      props.hostedZoneIdSsm
     );
-
-    const hostedPrefix = "elsa";
 
     const certApse2Arn = StringParameter.valueFromLookup(
       this,
-      "cert_apse2_arn"
+      props.hostedZoneCertificateSsm
     );
 
     const hostedZone = route53.HostedZone.fromHostedZoneAttributes(
@@ -92,39 +91,54 @@ export class ElsaDataStack extends Stack {
       description: "Service for registering Elsa Data components",
     });
 
+    const certificate = Certificate.fromCertificateArn(
+      this,
+      "SslCert",
+      certApse2Arn
+    );
+
     /**
      * Create Postgres Db and EdgeDb server
      */
     const edgeDb = new EdgeDbStack(this, "DatabaseStack", {
       stackName: `elsaDatabaseStack`,
-      vpc: vpc,
-      hostedZone: hostedZone,
-      config: {
-        isDevelopment: true,
-        secretsPrefix: "ElsaData", // pragma: allowlist secret
-        baseDatabase: {
-          dbAdminUser: `elsa_admin`,
-          dbName: `elsa_database`,
-        },
-        edgeDbService: {
-          superUser: "elsa_superuser",
-          desiredCount: 1,
-          cpu: 1024,
-          memory: 2048,
-          cert: elsaEdgeDbCert,
-          key: elsaEdgeDbKey,
-        },
-        edgeDbLoadBalancer: {
-          port: 4000,
-          uiPort: 4001,
+      isDevelopment: true,
+      secretsPrefix: "ElsaData", // pragma: allowlist secret
+      baseNetwork: {
+        vpc: vpc,
+        hostedPrefix: "elsa-edge-db",
+        hostedZone: hostedZone,
+      },
+      baseDatabase: {
+        dbAdminUser: `elsa_admin`,
+        dbName: `elsa_database`,
+        instanceType: InstanceType.of(
+          InstanceClass.BURSTABLE4_GRAVITON,
+          InstanceSize.SMALL
+        ),
+      },
+      edgeDbService: {
+        superUser: "elsa_superuser",
+        desiredCount: 1,
+        cpu: 1024,
+        memory: 2048,
+        cert: elsaEdgeDbCert,
+        key: elsaEdgeDbKey,
+      },
+      edgeDbLoadBalancer: {
+        port: 4000,
+        ui: {
+          port: 4001,
+          certificate: certificate,
         },
       },
     });
 
     new ElsaDataApplicationStack(this, "ElsaData", {
+      env: props.env,
       vpc: vpc,
+      hostedPrefix: "elsa",
       hostedZoneCertArn: certApse2Arn,
-      hostedPrefix: hostedPrefix,
       hostedZoneName: hostedZoneName,
       cloudMapService: service,
       edgeDbDsnNoPassword: edgeDb.dsnForEnvironmentVariable,

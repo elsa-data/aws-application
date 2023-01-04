@@ -18,6 +18,8 @@ export interface InstanceBaseDatabaseProps {
   vpc: IVpc;
 
   secret: ISecret;
+
+  instanceType: InstanceType;
 }
 
 /**
@@ -40,10 +42,7 @@ export class InstanceBaseDatabase extends BaseDatabase {
       }),
       credentials: rds.Credentials.fromSecret(props.secret),
       databaseName: props.databaseName,
-      instanceType: InstanceType.of(
-        InstanceClass.BURSTABLE4_GRAVITON,
-        InstanceSize.SMALL
-      ),
+      instanceType: props.instanceType,
       vpc: props.vpc,
       vpcSubnets: {
         subnetType: props.isDevelopment
