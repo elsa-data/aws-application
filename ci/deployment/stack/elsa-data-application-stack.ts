@@ -100,7 +100,7 @@ export class ElsaDataApplicationStack extends NestedStack {
           memoryLimitMiB: 2048,
           cpu: 1024,
           cpuArchitecture: CpuArchitecture.X86_64,
-          desiredCount: 1,
+          desiredCount: 0,
           containerName: FIXED_CONTAINER_NAME,
           logStreamPrefix: "elsa",
           logRetention: RetentionDays.ONE_MONTH,

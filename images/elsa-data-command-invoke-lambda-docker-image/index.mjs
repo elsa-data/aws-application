@@ -24,6 +24,8 @@ export const handler = async (event) => {
     };
   }
 
+  console.log(cmd);
+
   const clusterArn = process.env["CLUSTER_ARN"];
   const clusterLogGroupName = process.env["CLUSTER_LOG_GROUP_NAME"];
   const taskDefinitionArn = process.env["TASK_DEFINITION_ARN"];
@@ -59,12 +61,7 @@ export const handler = async (event) => {
       containerOverrides: [
         {
           name: containerName,
-          environment: [
-            {
-              name: "CMD",
-              value: cmd,
-            },
-          ],
+          command: [cmd],
           cpu: 512,
         },
       ],
@@ -92,7 +89,7 @@ export const handler = async (event) => {
     const taskArnSplit = taskArn.split("/");
 
     if (taskArnSplit.length === 3)
-      logStreamName = `elsa/elsa/${taskArnSplit[2]}`;
+      logStreamName = `elsa/ElsaData/${taskArnSplit[2]}`;
 
     let lastStatus = result.tasks[0].lastStatus;
 
@@ -104,7 +101,7 @@ export const handler = async (event) => {
         })
       );
 
-      console.log(waitResult);
+      console.log(JSON.stringify(waitResult, null, 2));
 
       lastStatus = waitResult.tasks[0].lastStatus;
 
