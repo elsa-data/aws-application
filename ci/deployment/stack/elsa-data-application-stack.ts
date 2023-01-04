@@ -20,17 +20,26 @@ import { IVpc, SecurityGroup, SubnetSelection } from "aws-cdk-lib/aws-ec2";
 import { Cluster, CpuArchitecture, TaskDefinition } from "aws-cdk-lib/aws-ecs";
 import { LogGroup, RetentionDays } from "aws-cdk-lib/aws-logs";
 import { Service } from "aws-cdk-lib/aws-servicediscovery";
+import { IHostedZone } from "aws-cdk-lib/aws-route53";
+import { ICertificate } from "aws-cdk-lib/aws-certificatemanager";
 
 interface Props extends StackProps {
   vpc: ec2.IVpc;
 
   hostedPrefix: string;
-  hostedZoneName: string;
-  hostedZoneCertArn: string;
+  hostedZone: IHostedZone;
+  hostedZoneCertificate: ICertificate;
 
   cloudMapService: Service;
 
+  /**
+   * The (passwordless) DSN of our EdgeDb instance.
+   */
   edgeDbDsnNoPassword: string;
+
+  /**
+   * The secret holding the password of our EdgeDb instance.
+   */
   edgeDbPasswordSecret: ISecret;
 }
 
@@ -47,8 +56,10 @@ export class ElsaDataApplicationStack extends NestedStack {
   constructor(scope: Construct, id: string, props: Props) {
     super(scope, id, props);
 
-    this.deployedUrl = `https://${props.hostedPrefix}.${props.hostedZoneName}`;
+    this.deployedUrl = `https://${props.hostedPrefix}.${props.hostedZone.zoneName}`;
 
+    // the temp bucket is a useful artifact to allow us to construct S3 objects
+    // that we know will automatically cycle/destroy
     const tempBucket = new Bucket(this, "TempBucket", {
       removalPolicy: RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
@@ -65,7 +76,7 @@ export class ElsaDataApplicationStack extends NestedStack {
 
     const dockerImageFolder = path.join(
       __dirname,
-      "../../../images/elsa-data-docker-image"
+      "elsa-data-application-docker-image"
     );
 
     const asset = new DockerImageAsset(this, "ElsaDataDockerImage", {
@@ -81,9 +92,11 @@ export class ElsaDataApplicationStack extends NestedStack {
         {
           vpc: props.vpc,
           hostedPrefix: props.hostedPrefix,
-          hostedZoneName: props.hostedZoneName,
-          hostedZoneCertArn: props.hostedZoneCertArn,
+          hostedZone: props.hostedZone,
+          hostedZoneCertificate: props.hostedZoneCertificate,
           imageAsset: asset,
+          // rather than have these be settable as props - we should do some study to work out
+          // optimal values of these ourselves
           memoryLimitMiB: 2048,
           cpu: 1024,
           cpuArchitecture: CpuArchitecture.X86_64,

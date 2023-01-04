@@ -1,7 +1,7 @@
 import { Construct } from "constructs";
 import { DockerImageAsset } from "aws-cdk-lib/aws-ecr-assets";
-import { HostedZone } from "aws-cdk-lib/aws-route53";
-import { Certificate } from "aws-cdk-lib/aws-certificatemanager";
+import { HostedZone, IHostedZone } from "aws-cdk-lib/aws-route53";
+import { Certificate, ICertificate } from "aws-cdk-lib/aws-certificatemanager";
 import { SslPolicy } from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import {
   IVpc,
@@ -28,8 +28,8 @@ type Props = {
 
   // the details of the domain name entry to construct as the ALB entrypoint
   hostedPrefix: string;
-  hostedZoneName: string;
-  hostedZoneCertArn: string;
+  hostedZone: IHostedZone;
+  hostedZoneCertificate: ICertificate;
 
   // the Docker image to run as the service
   imageAsset: DockerImageAsset;
@@ -67,17 +67,6 @@ export class DockerServiceWithHttpsLoadBalancerConstruct extends Construct {
 
   constructor(scope: Construct, id: string, props: Props) {
     super(scope, id);
-
-    // we have been passed in the values of an existing SSL cert and domain name in Route 53
-    // need to make CDK handles for them via lookups
-    const certificate = Certificate.fromCertificateArn(
-      this,
-      "SslCert",
-      props.hostedZoneCertArn
-    );
-    const domainZone = HostedZone.fromLookup(this, "Zone", {
-      domainName: props.hostedZoneName,
-    });
 
     // a cluster to run things on (will end up being a fargate cluster - so not actual ec2 instances)
     this.cluster = new Cluster(this, "Cluster", {
@@ -131,10 +120,10 @@ export class DockerServiceWithHttpsLoadBalancerConstruct extends Construct {
     // a load balanced fargate service hosted on an SSL host
     this.service = new ApplicationLoadBalancedFargateService(this, "Service", {
       cluster: this.cluster,
-      certificate: certificate,
+      certificate: props.hostedZoneCertificate,
       sslPolicy: SslPolicy.RECOMMENDED,
-      domainName: `${props.hostedPrefix}.${props.hostedZoneName}`,
-      domainZone: domainZone,
+      domainName: `${props.hostedPrefix}.${props.hostedZone.zoneName}`,
+      domainZone: props.hostedZone,
       redirectHTTP: true,
       desiredCount: props.desiredCount,
       publicLoadBalancer: true,
