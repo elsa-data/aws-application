@@ -26,7 +26,8 @@ import { ICertificate } from "aws-cdk-lib/aws-certificatemanager";
 interface Props extends StackProps {
   vpc: ec2.IVpc;
 
-  hostedPrefix: string;
+  urlPrefix: string;
+
   hostedZone: IHostedZone;
   hostedZoneCertificate: ICertificate;
 
@@ -41,6 +42,19 @@ interface Props extends StackProps {
    * The secret holding the password of our EdgeDb instance.
    */
   edgeDbPasswordSecret: ISecret;
+
+  imageFolder: string;
+  imageBase: string;
+
+  /**
+   * The memory assigned to the Elsa Data fargate
+   */
+  readonly memoryLimitMiB: number;
+
+  /**
+   * The cpu assigned to the Elsa Data fargate
+   */
+  readonly cpu: number;
 }
 
 // we need a consistent name within the ECS infrastructure for our container
@@ -56,7 +70,7 @@ export class ElsaDataApplicationStack extends NestedStack {
   constructor(scope: Construct, id: string, props: Props) {
     super(scope, id, props);
 
-    this.deployedUrl = `https://${props.hostedPrefix}.${props.hostedZone.zoneName}`;
+    this.deployedUrl = `https://${props.urlPrefix}.${props.hostedZone.zoneName}`;
 
     // the temp bucket is a useful artifact to allow us to construct S3 objects
     // that we know will automatically cycle/destroy
@@ -74,15 +88,14 @@ export class ElsaDataApplicationStack extends NestedStack {
       ],
     });
 
-    const dockerImageFolder = path.join(
-      __dirname,
-      "elsa-data-application-docker-image"
-    );
-
+    // we construct a CDK deployed docker image with any minor alterations
+    // we have made to the base image
     const asset = new DockerImageAsset(this, "ElsaDataDockerImage", {
-      directory: dockerImageFolder,
+      directory: props.imageFolder,
       platform: Platform.LINUX_AMD64,
-      buildArgs: {},
+      buildArgs: {
+        ELSA_DATA_BASE_IMAGE: props.imageBase,
+      },
     });
 
     const privateServiceWithLoadBalancer =
@@ -91,14 +104,14 @@ export class ElsaDataApplicationStack extends NestedStack {
         "PrivateServiceWithLb",
         {
           vpc: props.vpc,
-          hostedPrefix: props.hostedPrefix,
+          hostedPrefix: props.urlPrefix,
           hostedZone: props.hostedZone,
           hostedZoneCertificate: props.hostedZoneCertificate,
           imageAsset: asset,
           // rather than have these be settable as props - we should do some study to work out
           // optimal values of these ourselves
-          memoryLimitMiB: 2048,
-          cpu: 1024,
+          memoryLimitMiB: props.memoryLimitMiB,
+          cpu: props.cpu,
           cpuArchitecture: CpuArchitecture.X86_64,
           desiredCount: 1,
           containerName: FIXED_CONTAINER_NAME,
@@ -135,6 +148,12 @@ export class ElsaDataApplicationStack extends NestedStack {
         statements: [
           // need to be able to fetch secrets - we wildcard to everything with our designated prefix
           this.getSecretPolicyStatement(),
+          new PolicyStatement({
+            actions: ["s3:GetObject"],
+            resources: [
+              `arn:aws:s3:::agha-gdr-store-2.0/Cardiac/*/manifest.txt`,
+            ],
+          }),
           // temporarily give all S3 accesspoint perms - can we tighten?
           new PolicyStatement({
             actions: [

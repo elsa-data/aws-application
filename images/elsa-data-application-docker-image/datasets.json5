@@ -1,5 +1,5 @@
 {
-  datasets: [
+  "+datasets": [
     {
       name: "Cardiac",
       description: "The Australian Genomics Cardiac flagship",

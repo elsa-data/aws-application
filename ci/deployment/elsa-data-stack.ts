@@ -24,28 +24,40 @@ export class ElsaDataStack extends Stack {
   ) {
     super(scope, id, props);
 
-    /**
-     * Importing existing UMCCR Resource
-     */
-    const vpc = smartVpcConstruct(this, "VPC", "main-vpc");
-    const hostedZoneName = ssm.StringParameter.valueFromLookup(
+    const vpc = smartVpcConstruct(
       this,
-      props.hostedZoneNameSsm
-    );
-    const hostedZoneId = ssm.StringParameter.valueFromLookup(
-      this,
-      props.hostedZoneIdSsm
+      "VPC",
+      props.network.vpcNameOrDefaultOrNull
     );
 
-    const certApse2Arn = StringParameter.valueFromLookup(
-      this,
-      props.hostedZoneCertificateSsm
-    );
+    /**
+     * Importing existing UMCCR resources
+     */
+    const hostedZoneName = props.dns.hostedZoneNameSsm
+      ? ssm.StringParameter.valueFromLookup(this, props.dns.hostedZoneNameSsm)
+      : props.dns.hostedZoneName!;
+
+    const hostedZoneId = props.dns.hostedZoneIdSsm
+      ? ssm.StringParameter.valueFromLookup(this, props.dns.hostedZoneIdSsm)
+      : props.dns.hostedZoneId!;
+
+    const certApse2Arn = props.dns.hostedZoneCertificateArnSsm
+      ? StringParameter.valueFromLookup(
+          this,
+          props.dns.hostedZoneCertificateArnSsm
+        )
+      : props.dns.hostedZoneCertificateArn!;
 
     const hostedZone = route53.HostedZone.fromHostedZoneAttributes(
       this,
       "HostedZone",
       { hostedZoneId: hostedZoneId, zoneName: hostedZoneName }
+    );
+
+    const certificate = Certificate.fromCertificateArn(
+      this,
+      "SslCert",
+      certApse2Arn
     );
 
     // TODO: clean this up - ideally we would have all the certs in the master Elsa settings secrets
@@ -80,29 +92,23 @@ export class ElsaDataStack extends Stack {
         // passing an empty string does work
         namespaceArn: "",
         // this is also a bug? surely we should be able to look up a namespace just by name
-        namespaceId: props.cloudMapId,
-        namespaceName: props.cloudMapNamespace,
+        namespaceId: props.serviceRegistration.cloudMapId,
+        namespaceName: props.serviceRegistration.cloudMapNamespace,
       }
     );
 
     const service = new Service(this, "Service", {
       namespace: namespace,
-      name: props.cloudMapServiceName,
+      name: props.serviceRegistration.cloudMapServiceName,
       description: "Service for registering Elsa Data components",
     });
-
-    const certificate = Certificate.fromCertificateArn(
-      this,
-      "SslCert",
-      certApse2Arn
-    );
 
     /**
      * Create Postgres Db and EdgeDb server
      */
     const edgeDb = new EdgeDbStack(this, "DatabaseStack", {
       stackName: `elsaDatabaseStack`,
-      isDevelopment: true,
+      isDevelopment: props.isDevelopment,
       secretsPrefix: "ElsaData", // pragma: allowlist secret
       baseNetwork: {
         vpc: vpc,
@@ -120,13 +126,14 @@ export class ElsaDataStack extends Stack {
       edgeDbService: {
         superUser: "elsa_superuser",
         desiredCount: 1,
-        cpu: 1024,
-        memory: 2048,
+        cpu: props.serviceEdgeDb.cpu,
+        memory: props.serviceEdgeDb.memoryLimitMiB,
         cert: elsaEdgeDbCert,
         key: elsaEdgeDbKey,
       },
       edgeDbLoadBalancer: {
         port: 4000,
+        // note we always specify these settings but the UI will only be enabled when props.isDevelopment=true
         ui: {
           port: 4001,
           certificate: certificate,
@@ -137,12 +144,16 @@ export class ElsaDataStack extends Stack {
     new ElsaDataApplicationStack(this, "ElsaData", {
       env: props.env,
       vpc: vpc,
-      hostedPrefix: "elsa",
+      urlPrefix: props.serviceElsaData.urlPrefix,
       hostedZoneCertificate: certificate,
       hostedZone: hostedZone,
       cloudMapService: service,
       edgeDbDsnNoPassword: edgeDb.dsnForEnvironmentVariable,
       edgeDbPasswordSecret: edgeDb.edgeDbPasswordSecret,
+      imageBase: props.serviceElsaData.imageBaseName,
+      imageFolder: props.serviceElsaData.imageFolder,
+      cpu: props.serviceElsaData.cpu,
+      memoryLimitMiB: props.serviceElsaData.memoryLimitMiB,
     });
   }
 }

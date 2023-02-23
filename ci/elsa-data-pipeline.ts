@@ -2,6 +2,8 @@ import "source-map-support/register";
 import * as cdk from "aws-cdk-lib";
 import { ElsaDataPipelineStack } from "./elsa-data-pipeline-stack";
 import { TAG_STACK_VALUE } from "./elsa-data-constants";
+import { ElsaDataApplicationStack } from "./deployment/stack/elsa-data-application-stack";
+import { addElsaDataLocalDevTest } from "./elsa-data-local-dev-test-stack";
 
 const AWS_BUILD_ACCOUNT = "383856791668";
 const AWS_BUILD_REGION = "ap-southeast-2";
@@ -19,3 +21,5 @@ new ElsaDataPipelineStack(app, "ElsaDataPipelineStack", {
     Stack: TAG_STACK_VALUE,
   },
 });
+
+addElsaDataLocalDevTest(app);
