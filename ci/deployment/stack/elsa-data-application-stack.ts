@@ -17,16 +17,21 @@ import { ISecret } from "aws-cdk-lib/aws-secretsmanager";
 import { Bucket, BucketEncryption } from "aws-cdk-lib/aws-s3";
 import { DockerImageCode, DockerImageFunction } from "aws-cdk-lib/aws-lambda";
 import { IVpc, SecurityGroup, SubnetSelection } from "aws-cdk-lib/aws-ec2";
-import { Cluster, CpuArchitecture, TaskDefinition } from "aws-cdk-lib/aws-ecs";
+import {
+  Cluster,
+  ContainerImage,
+  CpuArchitecture,
+  TaskDefinition,
+} from "aws-cdk-lib/aws-ecs";
 import { LogGroup, RetentionDays } from "aws-cdk-lib/aws-logs";
 import { Service } from "aws-cdk-lib/aws-servicediscovery";
 import { IHostedZone } from "aws-cdk-lib/aws-route53";
 import { ICertificate } from "aws-cdk-lib/aws-certificatemanager";
+import { ElsaDataApplicationStackSettings } from "./elsa-data-application-stack-settings";
 
 interface Props extends StackProps {
+  isDevelopment?: boolean;
   vpc: ec2.IVpc;
-
-  urlPrefix: string;
 
   hostedZone: IHostedZone;
   hostedZoneCertificate: ICertificate;
@@ -34,7 +39,8 @@ interface Props extends StackProps {
   cloudMapService: Service;
 
   /**
-   * The (passwordless) DSN of our EdgeDb instance.
+   * The (passwordless) DSN of our EdgeDb instance as passed to us
+   * from the EdgeDb stack.
    */
   edgeDbDsnNoPassword: string;
 
@@ -43,18 +49,7 @@ interface Props extends StackProps {
    */
   edgeDbPasswordSecret: ISecret;
 
-  imageFolder: string;
-  imageBase: string;
-
-  /**
-   * The memory assigned to the Elsa Data fargate
-   */
-  readonly memoryLimitMiB: number;
-
-  /**
-   * The cpu assigned to the Elsa Data fargate
-   */
-  readonly cpu: number;
+  settings: ElsaDataApplicationStackSettings;
 }
 
 // we need a consistent name within the ECS infrastructure for our container
@@ -70,7 +65,7 @@ export class ElsaDataApplicationStack extends NestedStack {
   constructor(scope: Construct, id: string, props: Props) {
     super(scope, id, props);
 
-    this.deployedUrl = `https://${props.urlPrefix}.${props.hostedZone.zoneName}`;
+    this.deployedUrl = `https://${props.settings.urlPrefix}.${props.hostedZone.zoneName}`;
 
     // the temp bucket is a useful artifact to allow us to construct S3 objects
     // that we know will automatically cycle/destroy
@@ -88,15 +83,28 @@ export class ElsaDataApplicationStack extends NestedStack {
       ],
     });
 
-    // we construct a CDK deployed docker image with any minor alterations
-    // we have made to the base image
-    const asset = new DockerImageAsset(this, "ElsaDataDockerImage", {
-      directory: props.imageFolder,
-      platform: Platform.LINUX_AMD64,
-      buildArgs: {
-        ELSA_DATA_BASE_IMAGE: props.imageBase,
-      },
-    });
+    // we allow our Elsa image to either be the straight Elsa image from the public repo
+    // OR we will build a local Dockerfile to allow local changes to be made (config files
+    // added etc)
+    let containerImage: ContainerImage;
+
+    if (props.settings.imageFolder) {
+      // we construct a CDK deployed docker image with any minor alterations
+      // we have made to the base image
+      const asset = new DockerImageAsset(this, "DockerImageAsset", {
+        directory: props.settings.imageFolder,
+        platform: Platform.LINUX_AMD64,
+        buildArgs: {
+          ELSA_DATA_BASE_IMAGE: props.settings.imageBaseName,
+        },
+      });
+      containerImage = ContainerImage.fromDockerImageAsset(asset);
+    } else {
+      containerImage = ContainerImage.fromRegistry(
+        props.settings.imageBaseName,
+        {}
+      );
+    }
 
     const privateServiceWithLoadBalancer =
       new DockerServiceWithHttpsLoadBalancerConstruct(
@@ -104,14 +112,14 @@ export class ElsaDataApplicationStack extends NestedStack {
         "PrivateServiceWithLb",
         {
           vpc: props.vpc,
-          hostedPrefix: props.urlPrefix,
+          hostedPrefix: props.settings.urlPrefix,
           hostedZone: props.hostedZone,
           hostedZoneCertificate: props.hostedZoneCertificate,
-          imageAsset: asset,
+          containerImage: containerImage,
           // rather than have these be settable as props - we should do some study to work out
           // optimal values of these ourselves
-          memoryLimitMiB: props.memoryLimitMiB,
-          cpu: props.cpu,
+          memoryLimitMiB: props.settings.memoryLimitMiB,
+          cpu: props.settings.cpu,
           cpuArchitecture: CpuArchitecture.X86_64,
           desiredCount: 1,
           containerName: FIXED_CONTAINER_NAME,
@@ -120,14 +128,17 @@ export class ElsaDataApplicationStack extends NestedStack {
           healthCheckPath: "/",
           environment: {
             EDGEDB_DSN: props.edgeDbDsnNoPassword,
-            // note the 'extra-config' path comes from our custom Docker image we build - with a folder path where we put custom configs
-            ELSA_DATA_META_CONFIG_FOLDERS: "./config:/extra-config",
-            ELSA_DATA_META_CONFIG_SOURCES:
-              "file('base') file('dev-common') file('dev-deployed') file('datasets') aws-secret('ElsaDataDevDeployed')",
-            // override any file based setting of the deployed url
+            ELSA_DATA_META_CONFIG_FOLDERS:
+              props.settings.metaConfigFolders || "./config",
+            ELSA_DATA_META_CONFIG_SOURCES: props.settings.metaConfigSources,
+            // override any config settings that we know definitively here because of the
+            // way we have done the deployment
             ELSA_DATA_CONFIG_DEPLOYED_URL: this.deployedUrl,
             ELSA_DATA_CONFIG_PORT: "80",
             ELSA_DATA_CONFIG_AWS_TEMP_BUCKET: tempBucket.bucketName,
+            // only in development are we likely to be using an image that is not immutable
+            // i.e. dev we might use "latest".. but in production we should be using "1.0.1" for example
+            ECS_IMAGE_PULL_BEHAVIOR: props.isDevelopment ? "default" : "once",
           },
           secrets: {
             EDGEDB_PASSWORD: ecs.Secret.fromSecretsManager(
@@ -142,60 +153,91 @@ export class ElsaDataApplicationStack extends NestedStack {
       privateServiceWithLoadBalancer.service.taskDefinition.taskRole
     );
 
-    // the permissions of the running container (i.e all AWS functionality used by Elsa Data code)
-    privateServiceWithLoadBalancer.service.taskDefinition.taskRole.attachInlinePolicy(
-      new Policy(this, "FargateServiceTaskPolicy", {
-        statements: [
-          // need to be able to fetch secrets - we wildcard to everything with our designated prefix
-          this.getSecretPolicyStatement(),
-          new PolicyStatement({
-            actions: ["s3:GetObject"],
-            resources: [
-              `arn:aws:s3:::agha-gdr-store-2.0/Cardiac/*/manifest.txt`,
-            ],
-          }),
-          // temporarily give all S3 accesspoint perms - can we tighten?
-          new PolicyStatement({
-            actions: [
-              "s3:CreateAccessPoint",
-              "s3:DeleteAccessPoint",
-              "s3:DeleteAccessPointPolicy",
-              "s3:GetAccessPoint",
-              "s3:GetAccessPointPolicy",
-              "s3:GetAccessPointPolicyStatus",
-              "s3:ListAccessPoints",
-              "s3:PutAccessPointPolicy",
-              "s3:PutAccessPointPublicAccessBlock",
-            ],
-            resources: [`*`],
-          }),
-          // need to be able to invoke lambdas
-          new PolicyStatement({
-            actions: ["lambda:InvokeFunction"],
-            resources: [
-              `arn:aws:lambda:${Stack.of(this).region}:${
-                Stack.of(this).account
-              }:function:elsa-data-*`,
-            ],
-          }),
-          // access points need the ability to do CloudFormation
-          // TODO: tighten the policy on the CreateStack as that is a powerful function
-          //     possibly restrict the source of the template url
-          //     possibly restrict the user enacting the CreateStack to only them to create access points
-          new PolicyStatement({
-            actions: [
-              "cloudformation:CreateStack",
-              "cloudformation:DescribeStacks",
-              "cloudformation:DeleteStack",
-            ],
-            resources: [
-              `arn:aws:cloudformation:${Stack.of(this).region}:${
-                Stack.of(this).account
-              }:stack/elsa-data-*`,
-            ],
-          }),
+    const policy = new Policy(this, "FargateServiceTaskPolicy");
+
+    // need to be able to fetch secrets - we wildcard to every Secret that has our designated prefix of elsa*
+    policy.addStatements(this.getSecretPolicyStatement());
+
+    // for some of our scaling out work (Beacon etc) - we are going to make Lambdas that we want to be able to invoke
+    // again we wildcard to a designated prefix of elsa-data*
+    policy.addStatements(
+      new PolicyStatement({
+        actions: ["lambda:InvokeFunction"],
+        resources: [
+          `arn:aws:lambda:${Stack.of(this).region}:${
+            Stack.of(this).account
+          }:function:elsa-data-*`,
         ],
       })
+    );
+
+    // restrict our Get operations to a very specific set of keys in the named buckets
+    // NOTE: our 'signing' is always done by a different user so this is not the only
+    // permission that has to be set correctly
+    for (const [bucketName, keyWildcards] of Object.entries(
+      props.settings.awsPermissions.dataBucketPaths
+    )) {
+      policy.addStatements(
+        new PolicyStatement({
+          actions: ["s3:GetObject"],
+          // NOTE: we could consider restricting to region or account here in constructing the ARNS
+          // but given the bucket names are already globally specific we leave them open
+          resources: keyWildcards.map((k) => `arn:aws:s3:::${bucketName}/${k}`),
+        })
+      );
+    }
+
+    policy.addStatements(
+      new PolicyStatement({
+        actions: ["s3:ListBucket"],
+        resources: Object.keys(
+          props.settings.awsPermissions.dataBucketPaths
+        ).map((b) => `arn:aws:s3:::${b}`),
+      })
+    );
+
+    if (props.settings.awsPermissions.enableAccessPoints) {
+      policy.addStatements(
+        // temporarily give all S3 accesspoint perms - can we tighten?
+        new PolicyStatement({
+          actions: [
+            "s3:CreateAccessPoint",
+            "s3:DeleteAccessPoint",
+            "s3:DeleteAccessPointPolicy",
+            "s3:GetAccessPoint",
+            "s3:GetAccessPointPolicy",
+            "s3:GetAccessPointPolicyStatus",
+            "s3:ListAccessPoints",
+            "s3:PutAccessPointPolicy",
+            "s3:PutAccessPointPublicAccessBlock",
+          ],
+          resources: [`*`],
+        })
+      );
+
+      policy.addStatements(
+        // access points need the ability to do CloudFormation
+        // TODO: tighten the policy on the CreateStack as that is a powerful function
+        //     possibly restrict the source of the template url
+        //     possibly restrict the user enacting the CreateStack to only them to create access points
+        new PolicyStatement({
+          actions: [
+            "cloudformation:CreateStack",
+            "cloudformation:DescribeStacks",
+            "cloudformation:DeleteStack",
+          ],
+          resources: [
+            `arn:aws:cloudformation:${Stack.of(this).region}:${
+              Stack.of(this).account
+            }:stack/elsa-data-*`,
+          ],
+        })
+      );
+    }
+
+    // the permissions of the running container (i.e all AWS functionality used by Elsa Data code)
+    privateServiceWithLoadBalancer.service.taskDefinition.taskRole.attachInlinePolicy(
+      policy
     );
 
     // the command function is an invocable lambda that will then go and spin up an ad-hoc Task in our

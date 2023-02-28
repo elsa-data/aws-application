@@ -44,6 +44,14 @@ interface Props extends StackProps {
 
   // the configuration of the fargate service that is edge db itself
   edgeDbService: {
+    /**
+     * The version string of EdgeDb that will be used for the spun up EdgeDb image.
+     * Note that there are other EdgeDb dependencies inside the build of Elsa itself
+     * (used to generate queries etc) - and so this is probably going to need
+     * to align with those.
+     */
+    readonly version: string;
+
     superUser: string;
     desiredCount: number;
     cpu: number;
@@ -126,7 +134,7 @@ export class EdgeDbStack extends NestedStack {
       superUser: props.edgeDbService.superUser,
       superUserSecret: this._edgeDbPasswordSecret,
       // https://hub.docker.com/r/edgedb/edgedb/tags
-      edgeDbVersion: "2.7",
+      edgeDbVersion: props.edgeDbService.version,
       certificateCertSecret: props.edgeDbService.cert,
       certificateKeySecret: props.edgeDbService.key,
     });

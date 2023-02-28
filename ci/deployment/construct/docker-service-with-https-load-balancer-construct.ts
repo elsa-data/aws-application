@@ -1,14 +1,12 @@
 import { Construct } from "constructs";
-import { DockerImageAsset } from "aws-cdk-lib/aws-ecr-assets";
-import { HostedZone, IHostedZone } from "aws-cdk-lib/aws-route53";
-import { Certificate, ICertificate } from "aws-cdk-lib/aws-certificatemanager";
+import { IHostedZone } from "aws-cdk-lib/aws-route53";
+import { ICertificate } from "aws-cdk-lib/aws-certificatemanager";
 import { SslPolicy } from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import {
   IVpc,
   SecurityGroup,
   SubnetSelection,
   SubnetType,
-  Vpc,
 } from "aws-cdk-lib/aws-ec2";
 import { ApplicationLoadBalancedFargateService } from "aws-cdk-lib/aws-ecs-patterns";
 import {
@@ -21,6 +19,7 @@ import {
   Secret,
 } from "aws-cdk-lib/aws-ecs";
 import { LogGroup, RetentionDays } from "aws-cdk-lib/aws-logs";
+import { Duration } from "aws-cdk-lib";
 
 type Props = {
   // the VPC to place the cluster in
@@ -32,7 +31,7 @@ type Props = {
   hostedZoneCertificate: ICertificate;
 
   // the Docker image to run as the service
-  imageAsset: DockerImageAsset;
+  containerImage: ContainerImage;
 
   // env variables to pass to the Docker image
   environment: { [p: string]: string };
@@ -103,7 +102,7 @@ export class DockerServiceWithHttpsLoadBalancerConstruct extends Construct {
 
     const containerName = props.containerName;
     const container = taskDefinition.addContainer(containerName, {
-      image: ContainerImage.fromDockerImageAsset(props.imageAsset),
+      image: props.containerImage,
       cpu: props.cpu,
       memoryLimitMiB: props.memoryLimitMiB,
       environment: props.environment,
@@ -138,6 +137,9 @@ export class DockerServiceWithHttpsLoadBalancerConstruct extends Construct {
     if (props.healthCheckPath) {
       this.service.targetGroup.configureHealthCheck({
         path: props.healthCheckPath,
+        // https://docs.aws.amazon.com/AmazonECS/latest/bestpracticesguide/load-balancer-healthcheck.html
+        interval: Duration.seconds(10),
+        healthyThresholdCount: 2,
       });
     }
   }

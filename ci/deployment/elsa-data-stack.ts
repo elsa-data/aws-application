@@ -35,33 +35,34 @@ export class ElsaDataStack extends Stack {
      */
     const hostedZoneName = props.dns.hostedZoneNameSsm
       ? ssm.StringParameter.valueFromLookup(this, props.dns.hostedZoneNameSsm)
-      : props.dns.hostedZoneName!;
+      : props.dns.hostedZoneName;
 
     const hostedZoneId = props.dns.hostedZoneIdSsm
       ? ssm.StringParameter.valueFromLookup(this, props.dns.hostedZoneIdSsm)
-      : props.dns.hostedZoneId!;
+      : props.dns.hostedZoneId;
 
     const certApse2Arn = props.dns.hostedZoneCertificateArnSsm
       ? StringParameter.valueFromLookup(
           this,
           props.dns.hostedZoneCertificateArnSsm
         )
-      : props.dns.hostedZoneCertificateArn!;
+      : props.dns.hostedZoneCertificateArn;
 
     const hostedZone = route53.HostedZone.fromHostedZoneAttributes(
       this,
       "HostedZone",
-      { hostedZoneId: hostedZoneId, zoneName: hostedZoneName }
+      { hostedZoneId: hostedZoneId!, zoneName: hostedZoneName! }
     );
 
     const certificate = Certificate.fromCertificateArn(
       this,
       "SslCert",
-      certApse2Arn
+      certApse2Arn!
     );
 
     // TODO: clean this up - ideally we would have all the certs in the master Elsa settings secrets
     // const elsaSecret = Secret.fromSecretNameV2(this, "ElsaSecret", "Elsa");
+    // https://github.com/aws/containers-roadmap/issues/385
 
     const edgeDbCa = Secret.fromSecretNameV2(
       this,
@@ -130,12 +131,13 @@ export class ElsaDataStack extends Stack {
         memory: props.serviceEdgeDb.memoryLimitMiB,
         cert: elsaEdgeDbCert,
         key: elsaEdgeDbKey,
+        version: props.serviceEdgeDb.version,
       },
       edgeDbLoadBalancer: {
-        port: 4000,
+        port: props.serviceEdgeDb.dbUrlPort || 4000,
         // note we always specify these settings but the UI will only be enabled when props.isDevelopment=true
         ui: {
-          port: 4001,
+          port: props.serviceEdgeDb.dbUiUrlPort || 4001,
           certificate: certificate,
         },
       },
@@ -144,16 +146,12 @@ export class ElsaDataStack extends Stack {
     new ElsaDataApplicationStack(this, "ElsaData", {
       env: props.env,
       vpc: vpc,
-      urlPrefix: props.serviceElsaData.urlPrefix,
+      settings: props.serviceElsaData,
       hostedZoneCertificate: certificate,
       hostedZone: hostedZone,
       cloudMapService: service,
       edgeDbDsnNoPassword: edgeDb.dsnForEnvironmentVariable,
       edgeDbPasswordSecret: edgeDb.edgeDbPasswordSecret,
-      imageBase: props.serviceElsaData.imageBaseName,
-      imageFolder: props.serviceElsaData.imageFolder,
-      cpu: props.serviceElsaData.cpu,
-      memoryLimitMiB: props.serviceElsaData.memoryLimitMiB,
     });
   }
 }

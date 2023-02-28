@@ -1,3 +1,32 @@
+import { ElsaDataApplicationStackSettings } from "./stack/elsa-data-application-stack-settings";
+
+type Only<T, U> = {
+  [P in keyof T]: T[P];
+} & {
+  [P in keyof U]?: never;
+};
+
+type Either<T, U> = Only<T, U> | Only<U, T>;
+
+type DnsSettingSsm = {
+  /**
+   * The SSM parameter name for a parameter holding the DNS settings.
+   * e.g. /cdk/domain_name  =>  dev.umccr.org
+   */
+  readonly hostedZoneNameSsm: string;
+  readonly hostedZoneIdSsm: string;
+  readonly hostedZoneCertificateArnSsm: string;
+};
+
+type DnsSettingsName = {
+  /**
+   * The actual names for DNS settings direct as strings
+   */
+  readonly hostedZoneName: string;
+  readonly hostedZoneId: string;
+  readonly hostedZoneCertificateArn: string;
+};
+
 export interface ElsaDataStackSettings {
   /**
    * Changes the behaviour of most resources (databases etc) to be publicly
@@ -35,56 +64,9 @@ export interface ElsaDataStackSettings {
     readonly vpcNameOrDefaultOrNull: string | "default" | null;
   };
 
-  dns: {
-    /**
-     * The SSM parameter name for a parameter holding the DNS settings.
-     * e.g. /cdk/domain_name  =>  dev.umccr.org
-     */
-    readonly hostedZoneNameSsm: string;
-    readonly hostedZoneIdSsm: string;
-    readonly hostedZoneCertificateArnSsm: string;
-  } & {
-    /**
-     * The actual names for DNS settings direct as strings
-     */
-    readonly hostedZoneName?: string;
-    readonly hostedZoneId?: string;
-    readonly hostedZoneCertificateArn?: string;
-  };
+  dns: Either<DnsSettingSsm, DnsSettingsName>;
 
-  serviceElsaData: {
-    /**
-     * The URL prefix (name before first dot in hostname).
-     * This is something that is expected to be different per deployment (e.g. "elsa", "elsa-demo").
-     * It is required as it forms part of the deployed Elsa Data URL.
-     */
-    readonly urlPrefix: string;
-
-    /**
-     * The local folder location for where CDK will be asked to build the
-     * Elsa Data that is deployed. This allows use to build very customised
-     * images for prod v demo for instance. The Dockerfile in this folder
-     * should have a dynamic base FROM so that the base image can also
-     * be specified here.
-     */
-    readonly imageFolder: string;
-
-    /**
-     * The Docker image name for the base image of Elsa Data that will use for
-     * building each deployments image. See also `elsaDataImageFolder`.
-     */
-    readonly imageBaseName: string;
-
-    /**
-     * The memory assigned to the Elsa Data service
-     */
-    readonly memoryLimitMiB: number;
-
-    /**
-     * The cpu assigned to the Elsa Data service
-     */
-    readonly cpu: number;
-  };
+  serviceElsaData: ElsaDataApplicationStackSettings;
 
   serviceEdgeDb: {
     /**
@@ -110,5 +92,12 @@ export interface ElsaDataStackSettings {
      * the database has been made public via isDevelopment.
      */
     readonly dbUrlPrefix?: string;
+
+    /**
+     * The db URL port - if
+     * the database has been made public via isDevelopment.
+     */
+    readonly dbUrlPort?: number;
+    readonly dbUiUrlPort?: number;
   };
 }

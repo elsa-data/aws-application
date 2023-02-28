@@ -5,7 +5,7 @@ import { StringParameter } from "aws-cdk-lib/aws-ssm";
 import { PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { STACK_DESCRIPTION, TAG_STACK_VALUE } from "./elsa-data-constants";
 import { BuildSpec, LinuxBuildImage } from "aws-cdk-lib/aws-codebuild";
-import path from "path";
+import { getDeploymentAgDemoProps } from "./elsa-data-deployment-ag-demo-props";
 
 /**
  * Stack to hold the self mutating pipeline, and all the relevant settings for deployments
@@ -78,34 +78,13 @@ export class ElsaDataPipelineStack extends Stack {
       }),
     });
 
-    const imageFolder = path.join(
-      __dirname,
-      "../images",
-      "elsa-data-application-docker-image"
+    const agDemoStage = new ElsaDataBuildStage(
+      this,
+      "AgDemo",
+      getDeploymentAgDemoProps()
     );
 
-    /*const agDemoStage = new ElsaDataBuildStage(this, "AgDemo", {
-      env: {
-        account: "843407916570",
-        region: "ap-southeast-2",
-      },
-      cloudMapNamespace: "ag",
-      cloudMapId: "ns-76qslb4qpns7hrew",
-      cloudMapServiceName: "elsa-data-demo",
-      hostedPrefix: "elsa-demo",
-      memoryLimitMiB: 2048,
-      cpu: 1024,
-      hostedZoneCertificateSsm: "cert_apse2_arn",
-      hostedZoneNameSsm: "/hosted_zone/umccr/name",
-      hostedZoneIdSsm: "/hosted_zone/umccr/id",
-      elsaDataImageFolder: imageFolder,
-      elsaDataBaseImage: "ghcr.io/umccr/elsa-data:latest",
-      edgeDbVersion: "2.9",
-      // we want to create an isolated standalone VPC for our demo deployment
-      vpcNameOrDefaultOrNull: null
-    });
-
-    pipeline.addStage(agDemoStage); */
+    pipeline.addStage(agDemoStage);
 
     /*const prodStage = new ElsaDataBuildStage(this, "Prod", {
       env: {

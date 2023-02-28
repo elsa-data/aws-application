@@ -101,6 +101,9 @@ export class EdgeDbLoadBalancerConstruct extends Construct {
       tg.setAttribute("preserve_client_ip.enabled", "true");
       //tg.setAttribute("proxy_protocol_v2.enabled", "true");
       //tg.setAttribute("deregistration_delay.connection_termination.enabled", "true");
+
+      // recommended to speed up ECS deployments
+      // https://docs.aws.amazon.com/AmazonECS/latest/bestpracticesguide/load-balancer-connection-draining.html
       tg.setAttribute("deregistration_delay.timeout_seconds", "15");
     }
   }

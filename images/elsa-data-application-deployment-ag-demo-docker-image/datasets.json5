@@ -1,0 +1,11 @@
+{
+  datasets: [
+    {
+      name: "Demo",
+      description: "The Australian Genomics demonstration flagship",
+      uri: "urn:fdc:australiangenomics.org.au:2022:dataset/demo",
+      storageLocation: "aws-s3",
+      storageUriPrefix: "s3://agha-gdr-storedemo-2.0/Somatic",
+    },
+  ],
+}
