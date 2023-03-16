@@ -59,29 +59,13 @@ const FIXED_CONTAINER_NAME = "ElsaData";
 /**
  * The stack for deploying the actual Elsa Data web application.
  */
-export class ElsaDataApplicationStack extends NestedStack {
+export class ElsaDataApplicationConstruct extends Construct {
   public deployedUrl: string;
 
   constructor(scope: Construct, id: string, props: Props) {
-    super(scope, id, props);
+    super(scope, id);
 
     this.deployedUrl = `https://${props.settings.urlPrefix}.${props.hostedZone.zoneName}`;
-
-    // the temp bucket is a useful artifact to allow us to construct S3 objects
-    // that we know will automatically cycle/destroy
-    const tempBucket = new Bucket(this, "TempBucket", {
-      removalPolicy: RemovalPolicy.DESTROY,
-      autoDeleteObjects: true,
-      versioned: false,
-      publicReadAccess: false,
-      encryption: BucketEncryption.S3_MANAGED,
-      lifecycleRules: [
-        {
-          abortIncompleteMultipartUploadAfter: Duration.days(1),
-          expiration: Duration.days(1),
-        },
-      ],
-    });
 
     // we allow our Elsa image to either be the straight Elsa image from the public repo
     // OR we will build a local Dockerfile to allow local changes to be made (config files
@@ -135,7 +119,7 @@ export class ElsaDataApplicationStack extends NestedStack {
             // way we have done the deployment
             ELSA_DATA_CONFIG_DEPLOYED_URL: this.deployedUrl,
             ELSA_DATA_CONFIG_PORT: "80",
-            ELSA_DATA_CONFIG_AWS_TEMP_BUCKET: tempBucket.bucketName,
+            ELSA_DATA_CONFIG_AWS_TEMP_BUCKET: "tempbucket",
             // only in development are we likely to be using an image that is not immutable
             // i.e. dev we might use "latest".. but in production we should be using "1.0.1" for example
             ECS_IMAGE_PULL_BEHAVIOR: props.isDevelopment ? "default" : "once",
@@ -149,9 +133,9 @@ export class ElsaDataApplicationStack extends NestedStack {
       );
 
     // 👇 grant access to bucket
-    tempBucket.grantReadWrite(
-      privateServiceWithLoadBalancer.service.taskDefinition.taskRole
-    );
+    //tempBucket.grantReadWrite(
+    //  privateServiceWithLoadBalancer.service.taskDefinition.taskRole
+    //);
 
     const policy = new Policy(this, "FargateServiceTaskPolicy");
 

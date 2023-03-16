@@ -1,6 +1,6 @@
 import "source-map-support/register";
 import { join } from "path";
-import { ElsaDataStackSettings } from "./deployment/elsa-data-stack-settings";
+import { ElsaDataStackSettings } from "./deployment-application/elsa-data-stack-settings";
 import { StackProps } from "aws-cdk-lib";
 
 /**
@@ -17,15 +17,8 @@ export function getDeploymentAgDemoProps(): StackProps & ElsaDataStackSettings {
       cloudMapId: "ns-76qslb4qpns7hrew",
       cloudMapServiceName: "elsa-data-demo",
     },
-    network: {
-      // we want it to construct a new custom VPC to limit breach surface
-      vpcNameOrDefaultOrNull: null,
-    },
-    dns: {
-      hostedZoneCertificateArn: "cert_apse2_arn",
-      hostedZoneName: "data.australiangenomics.org.au",
-      hostedZoneId: "Z0844649Y139H8Y98L2M",
-    },
+    infrastructureStack: "InfrastructureStack",
+    infrastructureVpcId: "NOTKNOWNYET",
     serviceElsaData: {
       urlPrefix: "elsa-demo",
       imageFolder: join(

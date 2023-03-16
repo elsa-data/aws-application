@@ -3,7 +3,7 @@ import * as cdk from "aws-cdk-lib";
 import { ElsaDataPipelineStack } from "./elsa-data-pipeline-stack";
 import { TAG_STACK_VALUE } from "./elsa-data-constants";
 import { getDeploymentLocalDevTestProps } from "./elsa-data-deployment-local-dev-test-props";
-import { ElsaDataStack } from "./deployment/elsa-data-stack";
+import { ElsaDataStack } from "./deployment-application/elsa-data-stack";
 
 const AWS_BUILD_ACCOUNT = "383856791668";
 const AWS_BUILD_REGION = "ap-southeast-2";

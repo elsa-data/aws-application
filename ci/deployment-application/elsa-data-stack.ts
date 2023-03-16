@@ -1,20 +1,24 @@
 import {
   aws_ecs as ecs,
   aws_route53 as route53,
-  aws_ssm as ssm,
+  Fn,
   Stack,
   StackProps,
 } from "aws-cdk-lib";
 import { Construct } from "constructs";
-import { EdgeDbStack } from "./stack/edge-db-stack";
-import { smartVpcConstruct } from "./construct/vpc";
-import { ElsaDataApplicationStack } from "./stack/elsa-data-application-stack";
+import { EdgeDbConstruct } from "./stack/edge-db-stack";
+import { ElsaDataApplicationConstruct } from "./stack/elsa-data-application-construct";
 import { Secret } from "aws-cdk-lib/aws-secretsmanager";
-import { StringParameter } from "aws-cdk-lib/aws-ssm";
 import { HttpNamespace, Service } from "aws-cdk-lib/aws-servicediscovery";
 import { ElsaDataStackSettings } from "./elsa-data-stack-settings";
 import { Certificate } from "aws-cdk-lib/aws-certificatemanager";
-import { InstanceClass, InstanceSize, InstanceType } from "aws-cdk-lib/aws-ec2";
+import { Vpc } from "aws-cdk-lib/aws-ec2";
+import {
+  DATABASE_DNS_WITH_TOKENS_NAME,
+  HOSTED_ZONE_ID_NAME,
+  HOSTED_ZONE_NAME_NAME,
+  HOSTED_ZONE_WILDCARD_CERTIFICATE_ARN_NAME,
+} from "../../constants";
 
 export class ElsaDataStack extends Stack {
   constructor(
@@ -24,40 +28,26 @@ export class ElsaDataStack extends Stack {
   ) {
     super(scope, id, props);
 
-    const vpc = smartVpcConstruct(
-      this,
-      "VPC",
-      props.network.vpcNameOrDefaultOrNull
-    );
-
-    /**
-     * Importing existing UMCCR resources
-     */
-    const hostedZoneName = props.dns.hostedZoneNameSsm
-      ? ssm.StringParameter.valueFromLookup(this, props.dns.hostedZoneNameSsm)
-      : props.dns.hostedZoneName;
-
-    const hostedZoneId = props.dns.hostedZoneIdSsm
-      ? ssm.StringParameter.valueFromLookup(this, props.dns.hostedZoneIdSsm)
-      : props.dns.hostedZoneId;
-
-    const certApse2Arn = props.dns.hostedZoneCertificateArnSsm
-      ? StringParameter.valueFromLookup(
-          this,
-          props.dns.hostedZoneCertificateArnSsm
-        )
-      : props.dns.hostedZoneCertificateArn;
+    const vpc = Vpc.fromLookup(this, "VPC", {
+      vpcId: props.infrastructureVpcId,
+      // This is not allowed due to the time of resolution of the fromLookup
+      // Could consider https://dev.to/aws-builders/importing-vpc-ids-into-a-stack-with-cdk-27ok
+      // vpcId: Fn.importValue(VPC_ID_NAME),
+    });
 
     const hostedZone = route53.HostedZone.fromHostedZoneAttributes(
       this,
       "HostedZone",
-      { hostedZoneId: hostedZoneId!, zoneName: hostedZoneName! }
+      {
+        hostedZoneId: Fn.importValue(HOSTED_ZONE_ID_NAME),
+        zoneName: Fn.importValue(HOSTED_ZONE_NAME_NAME),
+      }
     );
 
     const certificate = Certificate.fromCertificateArn(
       this,
       "SslCert",
-      certApse2Arn!
+      Fn.importValue(HOSTED_ZONE_WILDCARD_CERTIFICATE_ARN_NAME)
     );
 
     // TODO: clean this up - ideally we would have all the certs in the master Elsa settings secrets
@@ -107,7 +97,7 @@ export class ElsaDataStack extends Stack {
     /**
      * Create Postgres Db and EdgeDb server
      */
-    const edgeDb = new EdgeDbStack(this, "DatabaseStack", {
+    const edgeDb = new EdgeDbConstruct(this, "DatabaseStack", {
       stackName: `elsaDatabaseStack`,
       isDevelopment: props.isDevelopment,
       secretsPrefix: "ElsaData", // pragma: allowlist secret
@@ -116,15 +106,8 @@ export class ElsaDataStack extends Stack {
         hostedPrefix: "elsa-edge-db",
         hostedZone: hostedZone,
       },
-      baseDatabase: {
-        dbAdminUser: `elsa_admin`,
-        dbName: `elsa_database`,
-        instanceType: InstanceType.of(
-          InstanceClass.BURSTABLE4_GRAVITON,
-          InstanceSize.SMALL
-        ),
-      },
       edgeDbService: {
+        baseDsn: Fn.importValue(DATABASE_DNS_WITH_TOKENS_NAME),
         superUser: "elsa_superuser",
         desiredCount: 1,
         cpu: props.serviceEdgeDb.cpu,
@@ -143,7 +126,7 @@ export class ElsaDataStack extends Stack {
       },
     });
 
-    new ElsaDataApplicationStack(this, "ElsaData", {
+    new ElsaDataApplicationConstruct(this, "ElsaData", {
       env: props.env,
       vpc: vpc,
       settings: props.serviceElsaData,

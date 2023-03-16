@@ -56,15 +56,18 @@ export interface ElsaDataStackSettings {
     readonly cloudMapServiceName: string;
   };
 
-  network: {
-    /**
-     * Controls the VPC that will be used, defaulted to, or constructed.
-     * See vpc.ts.
-     */
-    readonly vpcNameOrDefaultOrNull: string | "default" | null;
-  };
+  /**
+   * A previously installed stack providing us with network/db/storage/cert infrastructure
+   * via cloud formation exports.
+   */
+  infrastructureStack: string;
 
-  dns: Either<DnsSettingSsm, DnsSettingsName>;
+  /**
+   * This is an annyoing one - we do a Vpc.fromLookup using values imported from other
+   * stacks so we need to put it here. Infrastructure stacks are pretty stable (especially
+   * the vpcId) so this is straightforward.
+   */
+  infrastructureVpcId: string;
 
   serviceElsaData: ElsaDataApplicationStackSettings;
 

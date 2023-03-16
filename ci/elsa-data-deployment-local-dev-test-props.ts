@@ -1,7 +1,7 @@
 import "source-map-support/register";
 import { TAG_STACK_VALUE } from "./elsa-data-constants";
-import { ElsaDataStackSettings } from "./deployment/elsa-data-stack-settings";
 import { StackProps } from "aws-cdk-lib";
+import { ElsaDataStackSettings } from "./deployment-application/elsa-data-stack-settings";
 
 /**
  * The settings for our deployment to local-dev-test.
@@ -21,24 +21,17 @@ export function getDeploymentLocalDevTestProps(): StackProps &
     tags: {
       Stack: TAG_STACK_VALUE,
     },
+    isDevelopment: true,
     serviceRegistration: {
       cloudMapNamespace: "umccr",
       cloudMapId: "ns-mjt63c4ppdrly4jd",
       cloudMapServiceName: "elsa-data",
     },
-    network: {
-      // use the dev VPC that we expect already exists
-      vpcNameOrDefaultOrNull: "main-vpc",
-    },
-    dns: {
-      // use the DNS settings already embedded in SSM params in our accounts
-      hostedZoneCertificateArnSsm: "cert_apse2_arn",
-      hostedZoneNameSsm: "/hosted_zone/umccr/name",
-      hostedZoneIdSsm: "/hosted_zone/umccr/id",
-    },
+    infrastructureStack: "ElsaDataLocalDevTestInfrastructureStack",
+    infrastructureVpcId: "vpc-00eafc63c0dfca266",
     serviceElsaData: {
       urlPrefix: "elsa",
-      imageBaseName: "ghcr.io/umccr/elsa-data:pr-211",
+      imageBaseName: "ghcr.io/umccr/elsa-data:dev",
       metaConfigSources:
         "file('base') file('dev-common') file('dev-deployed') file('datasets') aws-secret('ElsaDataDevDeployed')",
       awsPermissions: {
@@ -58,8 +51,8 @@ export function getDeploymentLocalDevTestProps(): StackProps &
       cpu: 1024,
       // the URL prefix of the database UI (which is exposed due to isDevelopment=true)
       dbUrlPrefix: "elsa-edge-db",
-      dbUrlPort: 40000,
-      dbUiUrlPort: 40001,
+      dbUrlPort: 4000,
+      dbUiUrlPort: 4001,
     },
   };
 }

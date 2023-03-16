@@ -1,7 +1,7 @@
 {
-  "name": "elsa-data-aws-deploy",
+  "name": "elsa-data-aws-deploy-infrastructure",
   "version": "0.9.0",
-  "description": "A CDK pipeline for building/deploying a Elsa Data stack in the UMCCR environment",
+  "description": "A manually deployd CDK stack for Elsa Data infrastructure in the UMCCR environment",
   "devDependencies": {
     "@tsconfig/node18": "1.0.1",
     "@types/node": "18.15.3",
