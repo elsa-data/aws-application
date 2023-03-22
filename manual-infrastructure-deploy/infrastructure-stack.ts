@@ -78,7 +78,8 @@ export class InfrastructureStack extends Stack {
     const vpc = smartVpcConstruct(
       this,
       "VPC",
-      props.network.vpcNameOrDefaultOrNull
+      props.network.vpcNameOrDefaultOrNull,
+      true
     );
 
     new CfnOutput(this, VPC_ID_NAME, {
@@ -100,19 +101,26 @@ export class InfrastructureStack extends Stack {
       // a bucket that can expire objects over different expiration delays depending on prefix
       lifecycleRules: [
         {
-          prefix: "1/",
+          // we have no reasons to allow multipart uploads over long periods
           abortIncompleteMultipartUploadAfter: Duration.days(1),
+          // we are actually set to version: false, but no harm setting this
+          noncurrentVersionExpiration: Duration.days(1),
+        },
+        {
+          prefix: "1/",
           expiration: Duration.days(1),
         },
         {
           prefix: "7/",
-          abortIncompleteMultipartUploadAfter: Duration.days(1),
           expiration: Duration.days(7),
         },
         {
           prefix: "30/",
-          abortIncompleteMultipartUploadAfter: Duration.days(1),
           expiration: Duration.days(30),
+        },
+        {
+          prefix: "90/",
+          expiration: Duration.days(90),
         },
       ],
     });

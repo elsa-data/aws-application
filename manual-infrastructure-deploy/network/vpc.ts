@@ -1,7 +1,11 @@
 import { StackProps } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
-import { IVpc } from "aws-cdk-lib/aws-ec2";
+import {
+  InterfaceVpcEndpointAwsService,
+  IVpc,
+  SubnetType,
+} from "aws-cdk-lib/aws-ec2";
 
 /**
  * The smart VPC construct allows us to either inherit an existing VPC, or create a new VPC
@@ -10,15 +14,39 @@ import { IVpc } from "aws-cdk-lib/aws-ec2";
  * @param scope
  * @param id
  * @param vpcNameOrDefaultOrNull either an existing VPC id, the string "default" to indicate to let CDK pick the VPC, or null to indicate a new VPC should be created
+ * @param enableEcrEndpoints if creating a new VPC, this indicates whether we should install the endpoints to enable private ECR
  */
 export function smartVpcConstruct(
   scope: Construct,
   id: string,
-  vpcNameOrDefaultOrNull: string | "default" | null
+  vpcNameOrDefaultOrNull: string | "default" | null,
+  enableEcrEndpoints: boolean
 ): IVpc {
   // if not vpc details are given then we construct a new VPC
   if (!vpcNameOrDefaultOrNull) {
-    return new NatVPC(scope, id);
+    const vpc = new NatVPC(scope, id);
+
+    const addEndpoint = (
+      name: string,
+      service: InterfaceVpcEndpointAwsService
+    ) => {
+      const ecrEndpoint = vpc.addInterfaceEndpoint(name + "Endpoint", {
+        service: service,
+        privateDnsEnabled: true,
+        subnets: {
+          subnetType: SubnetType.PRIVATE_ISOLATED,
+        },
+      });
+      ecrEndpoint.connections.allowDefaultPortInternally();
+    };
+
+    if (enableEcrEndpoints) {
+      addEndpoint("Ecr", InterfaceVpcEndpointAwsService.ECR);
+      addEndpoint("EcrDkr", InterfaceVpcEndpointAwsService.ECR_DOCKER);
+      addEndpoint("Logs", InterfaceVpcEndpointAwsService.CLOUDWATCH_LOGS);
+    }
+
+    return vpc;
   }
 
   // if they ask for the special name default then we use the VPC defaulting mechanism (via CDK lookup)
@@ -51,6 +79,8 @@ class NatVPC extends ec2.Vpc {
           subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
         },
       ],
+      enableDnsHostnames: true,
+      enableDnsSupport: true,
       // gateway endpoints are free and help avoid NAT traffic... there is no point in
       // not having them by default
       gatewayEndpoints: {

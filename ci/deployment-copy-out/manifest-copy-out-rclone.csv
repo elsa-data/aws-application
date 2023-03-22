@@ -1,0 +1,4 @@
+copy --stats-log-level NOTICE --checksum s3:umccr-10c-data-dev/HG002.bam s3:elsa-data-replication-target-foo
+copy --stats-log-level NOTICE --checksum s3:umccr-10c-data-dev/HG002.bam.bai s3:elsa-data-replication-target-foo
+copy --stats-log-level NOTICE --checksum s3:umccr-10c-data-dev/HG004.bam s3:elsa-data-replication-target-foo
+copy --stats-log-level NOTICE --checksum s3:umccr-10c-data-dev/HG004.bam.bai s3:elsa-data-replication-target-foo
