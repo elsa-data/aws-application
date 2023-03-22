@@ -36,16 +36,9 @@ export class CopyOutStack extends Stack {
       enableFargateCapacityProviders: true,
     });
 
-    cluster.addDefaultCapacityProviderStrategy([
-      {
-        capacityProvider: "FARGATE_SPOT",
-        weight: 1,
-      },
-    ]);
-
     const service = new Service(this, "Service", {
       namespace: namespace,
-      name: props.serviceRegistration.cloudMapServiceName,
+      name: "ElsaDataCopyOut",
       description: "Service for registering Copy Out components",
     });
 
