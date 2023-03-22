@@ -38,7 +38,7 @@ new CopyOutStack(app, "ElsaDataCopyOutStack", {
     region: "ap-southeast-2",
   },
   tags: {
-    Stack: TAG_STACK_VALUE,
+    Stack: TAG_STACK_VALUE + "CopyOut",
   },
   isDevelopment: true,
   serviceRegistration: {

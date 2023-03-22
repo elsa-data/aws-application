@@ -314,6 +314,7 @@ class EcsFargateSpotOnlyLaunchTarget implements IEcsLaunchTarget {
             CapacityProvider: "FARGATE_SPOT",
           },
         ],
+        PropagateTags: "TASK_DEFINITION",
       },
     };
   }
