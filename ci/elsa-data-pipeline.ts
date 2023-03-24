@@ -5,6 +5,8 @@ import { TAG_STACK_VALUE } from "./elsa-data-constants";
 import { getDeploymentLocalDevTestProps } from "./elsa-data-deployment-local-dev-test-props";
 import { ElsaDataStack } from "./deployment-application/elsa-data-stack";
 import { CopyOutStack } from "./deployment-copy-out/copy-out-stack";
+import { TAG_PRODUCT_KEY, TAG_PRODUCT_VALUE } from "../constants";
+import { SubnetType } from "aws-cdk-lib/aws-ec2";
 
 const AWS_BUILD_ACCOUNT = "383856791668";
 const AWS_BUILD_REGION = "ap-southeast-2";
@@ -21,6 +23,7 @@ new ElsaDataPipelineStack(app, "ElsaDataPipelineStack", {
   },
   tags: {
     Stack: TAG_STACK_VALUE,
+    [TAG_PRODUCT_KEY]: TAG_PRODUCT_VALUE,
   },
 });
 
@@ -31,7 +34,7 @@ new ElsaDataStack(
   getDeploymentLocalDevTestProps()
 );
 
-new CopyOutStack(app, "ElsaDataCopyOutStack", {
+new CopyOutStack(app, "ElsaDataLocalDevTestCopyOutStack", {
   // the pipeline can only be deployed to 'dev'
   env: {
     account: "843407916570",
@@ -39,13 +42,24 @@ new CopyOutStack(app, "ElsaDataCopyOutStack", {
   },
   tags: {
     Stack: TAG_STACK_VALUE + "CopyOut",
+    [TAG_PRODUCT_KEY]: TAG_PRODUCT_VALUE,
   },
   isDevelopment: true,
-  serviceRegistration: {
-    cloudMapNamespace: "umccr",
-    cloudMapId: "ns-mjt63c4ppdrly4jd",
-    cloudMapServiceName: "elsa-data",
-  },
   infrastructureStack: "ElsaDataLocalDevTestInfrastructureStack",
-  infrastructureVpcId: "vpc-00eafc63c0dfca266",
+  infrastructureSubnetSelection: SubnetType.PRIVATE_WITH_EGRESS,
+});
+
+new CopyOutStack(app, "ElsaDataAgCopyOutStack", {
+  // the pipeline can only be deployed to 'dev'
+  env: {
+    account: "843407916570",
+    region: "ap-southeast-2",
+  },
+  tags: {
+    Stack: TAG_STACK_VALUE + "CopyOut",
+    [TAG_PRODUCT_KEY]: TAG_PRODUCT_VALUE,
+  },
+  isDevelopment: true,
+  infrastructureStack: "ElsaDataLocalDevTestInfrastructureStack",
+  infrastructureSubnetSelection: SubnetType.PRIVATE_ISOLATED,
 });

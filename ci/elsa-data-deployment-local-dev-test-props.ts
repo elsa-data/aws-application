@@ -2,6 +2,7 @@ import "source-map-support/register";
 import { TAG_STACK_VALUE } from "./elsa-data-constants";
 import { StackProps } from "aws-cdk-lib";
 import { ElsaDataStackSettings } from "./deployment-application/elsa-data-stack-settings";
+import { TAG_PRODUCT_KEY, TAG_PRODUCT_VALUE } from "../constants";
 
 /**
  * The settings for our deployment to local-dev-test.
@@ -20,15 +21,13 @@ export function getDeploymentLocalDevTestProps(): StackProps &
     },
     tags: {
       Stack: TAG_STACK_VALUE,
+      [TAG_PRODUCT_KEY]: TAG_PRODUCT_VALUE,
     },
     isDevelopment: true,
     serviceRegistration: {
-      cloudMapNamespace: "umccr",
-      cloudMapId: "ns-mjt63c4ppdrly4jd",
       cloudMapServiceName: "elsa-data",
     },
     infrastructureStack: "ElsaDataLocalDevTestInfrastructureStack",
-    infrastructureVpcId: "vpc-00eafc63c0dfca266",
     serviceElsaData: {
       urlPrefix: "elsa",
       imageBaseName: "ghcr.io/umccr/elsa-data:dev",

@@ -13,12 +13,9 @@ export function getDeploymentAgDemoProps(): StackProps & ElsaDataStackSettings {
       region: "ap-southeast-2",
     },
     serviceRegistration: {
-      cloudMapNamespace: "ag",
-      cloudMapId: "ns-76qslb4qpns7hrew",
       cloudMapServiceName: "elsa-data-demo",
     },
     infrastructureStack: "InfrastructureStack",
-    infrastructureVpcId: "NOTKNOWNYET",
     serviceElsaData: {
       urlPrefix: "elsa-demo",
       imageFolder: join(

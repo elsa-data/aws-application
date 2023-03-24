@@ -1,4 +1,4 @@
-import { StackProps } from "aws-cdk-lib";
+import { StackProps, Tags } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import {
@@ -6,6 +6,7 @@ import {
   IVpc,
   SubnetType,
 } from "aws-cdk-lib/aws-ec2";
+import { TAG_PRODUCT_KEY, TAG_PRODUCT_VALUE } from "../../constants";
 
 /**
  * The smart VPC construct allows us to either inherit an existing VPC, or create a new VPC
@@ -26,6 +27,10 @@ export function smartVpcConstruct(
   if (!vpcNameOrDefaultOrNull) {
     const vpc = new NatVPC(scope, id);
 
+    // btw https://github.com/aws/aws-cdk/issues/19332
+    // in case you wonder why these are not tagged automatically
+    // https://github.com/aws-cloudformation/cloudformation-coverage-roadmap/issues/196
+
     const addEndpoint = (
       name: string,
       service: InterfaceVpcEndpointAwsService
@@ -37,7 +42,7 @@ export function smartVpcConstruct(
           subnetType: SubnetType.PRIVATE_ISOLATED,
         },
       });
-      ecrEndpoint.connections.allowDefaultPortInternally();
+      // ecrEndpoint.connections.allowDefaultPortInternally();
     };
 
     if (enableEcrEndpoints) {

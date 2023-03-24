@@ -1,34 +1,18 @@
-import { Stack, StackProps } from "aws-cdk-lib";
+import { Stack } from "aws-cdk-lib";
 import { Construct } from "constructs";
-import { Vpc } from "aws-cdk-lib/aws-ec2";
-import { CopyOutStackSettings } from "./copy-out-stack-settings";
+import { CopyOutStackProps } from "./copy-out-stack-props";
 import { Cluster } from "aws-cdk-lib/aws-ecs";
-import { CopyOutStateMachineConstruct } from "./copy-out-state-machine-construct";
-import { HttpNamespace, Service } from "aws-cdk-lib/aws-servicediscovery";
+import { CopyOutStateMachineConstruct } from "./construct/copy-out-state-machine-construct";
+import { Service } from "aws-cdk-lib/aws-servicediscovery";
+import { createFromAttributes } from "../../manual-infrastructure-deploy/create-from-attributes";
 
 export class CopyOutStack extends Stack {
-  constructor(
-    scope: Construct,
-    id: string,
-    props: StackProps & CopyOutStackSettings
-  ) {
+  constructor(scope: Construct, id: string, props: CopyOutStackProps) {
     super(scope, id, props);
 
-    const vpc = Vpc.fromLookup(this, "VPC", {
-      vpcId: props.infrastructureVpcId,
-    });
-
-    const namespace = HttpNamespace.fromHttpNamespaceAttributes(
+    const { vpc, namespace } = createFromAttributes(
       this,
-      "Namespace",
-      {
-        // this is a bug in the CDK definitions - this field is optional but not defined that way
-        // passing an empty string does work
-        namespaceArn: "",
-        // this is also a bug? surely we should be able to look up a namespace just by name
-        namespaceId: props.serviceRegistration.cloudMapId,
-        namespaceName: props.serviceRegistration.cloudMapNamespace,
-      }
+      props.infrastructureStack
     );
 
     const cluster = new Cluster(this, "FargateCluster", {
@@ -39,12 +23,14 @@ export class CopyOutStack extends Stack {
     const service = new Service(this, "Service", {
       namespace: namespace,
       name: "ElsaDataCopyOut",
-      description: "Service for registering Copy Out components",
+      description: "Parallel S3 file copying service",
     });
 
-    const sm = new CopyOutStateMachineConstruct(this, "State", {
+    const sm = new CopyOutStateMachineConstruct(this, "CopyOut", {
+      vpc: vpc,
       fargateCluster: cluster,
       namespaceService: service,
+      aggressiveTimes: props.isDevelopment,
     });
   }
 }

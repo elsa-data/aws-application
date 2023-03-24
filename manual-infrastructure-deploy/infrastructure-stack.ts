@@ -4,11 +4,9 @@ import {
   Duration,
   RemovalPolicy,
   Stack,
-  StackProps,
 } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import { InstanceBaseDatabase } from "./rds/instance-base-database";
-import { InstanceType } from "aws-cdk-lib/aws-ec2";
 import { smartVpcConstruct } from "./network/vpc";
 import { Bucket, BucketEncryption, ObjectOwnership } from "aws-cdk-lib/aws-s3";
 import { HostedZone } from "aws-cdk-lib/aws-route53";
@@ -16,64 +14,23 @@ import {
   Certificate,
   CertificateValidation,
 } from "aws-cdk-lib/aws-certificatemanager";
-import {
-  DATABASE_DNS_WITH_TOKENS_NAME,
-  HOSTED_ZONE_ID_NAME,
-  HOSTED_ZONE_NAME_NAME,
-  HOSTED_ZONE_WILDCARD_CERTIFICATE_ARN_NAME,
-  TEMP_BUCKET_NAME_NAME,
-  VPC_ID_NAME,
-} from "../constants";
+import { InfrastructureStackProps } from "./infrastructure-stack-props";
+import { StringListParameter, StringParameter } from "aws-cdk-lib/aws-ssm";
+import { HttpNamespace } from "aws-cdk-lib/aws-servicediscovery";
 
-interface Props extends StackProps {
-  /**
-   * A master control switch that tells us that this infrastructure is destined
-   * for an environment that contains only development data. This will
-   * control whether databases and buckets 'auto-delete' (for instance). It
-   * may change the visibility of some resources (RDS instances) - but should in
-   * no way expose any resource insecurely (i.e. they will still need passwords
-   * even if the database is in a public subnet).
-   *
-   * The default assumption if this is not present is that all infrastructure
-   * is as locked down as possible.
-   */
-  isDevelopment?: boolean;
-
-  network: {
-    /**
-     * Controls the VPC that will be used, defaulted to, or constructed.
-     * See vpc.ts.
-     */
-    readonly vpcNameOrDefaultOrNull: string | "default" | null;
-  };
-
-  // the configuration of any DNS associated with *all* applications that will be
-  // installed to this infrastructure
-  dns?: {
-    // specifies a Route 53 zone under our control that we will create
-    // a wildcard SSL certificate for
-    hostedZoneName: string;
-  };
-
-  // the configuration of the postgres instance which will be created
-  database?: {
-    // type: "serverless" | "instance";
-    instanceType: InstanceType;
-    dbAdminUser: string;
-    dbName: string;
-  };
-
-  // a prefix that is used for constructing any AWS secrets (i.e. postgres password)
-  // if empty - the default AWS naming is used (which are decent names but possibly uninformative of which postgres for instance)
-  secretsPrefix?: string;
-}
-
+/**
+ * A basic infrastructure stack that supports
+ * - vpc/network - either as a new VPC or re-using existing
+ * - a namespace
+ * - a DNS zone and certificate
+ * - a private bucket for temporary objects (with autoexpiry)
+ * - a postgres database
+ */
 export class InfrastructureStack extends Stack {
-  constructor(scope: Construct, id: string, props: Props) {
+  constructor(scope: Construct, id: string, props: InfrastructureStackProps) {
     super(scope, id, props);
 
-    this.templateOptions.description =
-      "Elsa Data infrastructure stack providing network/database/storage options to applications";
+    this.templateOptions.description = props.description;
 
     const vpc = smartVpcConstruct(
       this,
@@ -82,14 +39,53 @@ export class InfrastructureStack extends Stack {
       true
     );
 
-    new CfnOutput(this, VPC_ID_NAME, {
-      value: vpc.vpcId,
-      exportName: VPC_ID_NAME,
+    // https://lzygo1995.medium.com/how-to-share-information-between-stacks-through-ssm-parameter-store-in-cdk-1a64e4e9d83a
+
+    new StringParameter(this, "VpcIdParameter", {
+      parameterName: `/${id}/VPC/vpcId`,
+      stringValue: vpc.vpcId,
+    });
+
+    new StringListParameter(this, "AvailabilityZonesParameter", {
+      parameterName: `/${id}/VPC/availabilityZones`,
+      stringListValue: vpc.availabilityZones,
+    });
+
+    new StringListParameter(this, "PublicSubnetIdsParameter", {
+      parameterName: `/${id}/VPC/publicSubnetIds`,
+      stringListValue: vpc.publicSubnets.map((a) => a.subnetId),
+    });
+
+    new StringListParameter(this, "PublicSubnetRouteTableIdsParameter", {
+      parameterName: `/${id}/VPC/publicSubnetRouteTableIds`,
+      stringListValue: vpc.publicSubnets.map((a) => a.routeTable.routeTableId),
+    });
+
+    new StringListParameter(this, "PrivateSubnetIdsParameter", {
+      parameterName: `/${id}/VPC/privateSubnetIds`,
+      stringListValue: vpc.privateSubnets.map((a) => a.subnetId),
+    });
+
+    new StringListParameter(this, "PrivateSubnetRouteTableIdsParameter", {
+      parameterName: `/${id}/VPC/privateSubnetRouteTableIds`,
+      stringListValue: vpc.privateSubnets.map((a) => a.routeTable.routeTableId),
+    });
+
+    new StringListParameter(this, "IsolatedSubnetIdsParameter", {
+      parameterName: `/${id}/VPC/isolatedSubnetIds`,
+      stringListValue: vpc.isolatedSubnets.map((a) => a.subnetId),
+    });
+
+    new StringListParameter(this, "IsolatedSubnetRouteTableIdsParameter", {
+      parameterName: `/${id}/VPC/isolatedSubnetRouteTableIds`,
+      stringListValue: vpc.isolatedSubnets.map(
+        (a) => a.routeTable.routeTableId
+      ),
     });
 
     // the temp bucket is a useful artifact to allow us to construct S3 objects
     // that we know will automatically cycle/destroy
-    const tempBucket = new Bucket(this, "TempBucket", {
+    const tempPrivateBucket = new Bucket(this, "TempPrivateBucket", {
       // note we set this up for DESTROY and autoDeleteObjects, irrespective of isDevelopment - it is *meant* to be a
       // temporary bucket
       removalPolicy: RemovalPolicy.DESTROY,
@@ -125,15 +121,72 @@ export class InfrastructureStack extends Stack {
       ],
     });
 
-    // we should consider enabling something like this
-    // tempBucket.grantPublicAccess("1/public/");
-    // tempBucket.grantPublicAccess("7/public/");
-    // tempBucket.grantPublicAccess("30/public/");
+    /*const tempPublicBucket = new Bucket(this, "TempPublicBucket", {
+      // note we set this up for DESTROY and autoDeleteObjects, irrespective of isDevelopment - it is *meant* to be a
+      // temporary bucket
+      removalPolicy: RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
+      versioned: false,
+      publicReadAccess: true,
+      objectOwnership: ObjectOwnership.BUCKET_OWNER_ENFORCED,
+      encryption: BucketEncryption.S3_MANAGED,
+      // a bucket that can expire objects over different expiration delays depending on prefix
+      lifecycleRules: [
+        {
+          // we have no reasons to allow multipart uploads over long periods
+          abortIncompleteMultipartUploadAfter: Duration.days(1),
+          // we are actually set to version: false, but no harm setting this
+          noncurrentVersionExpiration: Duration.days(1),
+        },
+        {
+          prefix: "1/",
+          expiration: Duration.days(1),
+        },
+        {
+          prefix: "7/",
+          expiration: Duration.days(7),
+        },
+        {
+          prefix: "30/",
+          expiration: Duration.days(30),
+        },
+        {
+          prefix: "90/",
+          expiration: Duration.days(90),
+        },
+      ],
+    });*/
 
-    new CfnOutput(this, TEMP_BUCKET_NAME_NAME, {
-      value: tempBucket.bucketName,
-      exportName: TEMP_BUCKET_NAME_NAME,
+    new StringParameter(this, "TempPrivateBucketArnParameter", {
+      parameterName: `/${id}/TempPrivateBucket/bucketArn`,
+      stringValue: tempPrivateBucket.bucketArn,
     });
+
+    new StringParameter(this, "TempPrivateBucketNameParameter", {
+      parameterName: `/${id}/TempPrivateBucket/bucketName`,
+      stringValue: tempPrivateBucket.bucketName,
+    });
+
+    if (props.namespace) {
+      const ns = new HttpNamespace(this, "Namespace", {
+        name: props.namespace.name,
+      });
+
+      new StringParameter(this, "NamespaceNameParameter", {
+        parameterName: `/${id}/HttpNamespace/namespaceName`,
+        stringValue: ns.namespaceName,
+      });
+
+      new StringParameter(this, "NamespaceIdParameter", {
+        parameterName: `/${id}/HttpNamespace/namespaceId`,
+        stringValue: ns.namespaceId,
+      });
+
+      new StringParameter(this, "NamespaceArnParameter", {
+        parameterName: `/${id}/HttpNamespace/namespaceArn`,
+        stringValue: ns.namespaceArn,
+      });
+    }
 
     if (props.dns) {
       const hz = HostedZone.fromLookup(this, "HostedZone", {
@@ -146,19 +199,19 @@ export class InfrastructureStack extends Stack {
         validation: CertificateValidation.fromDns(hz),
       });
 
-      new CfnOutput(this, HOSTED_ZONE_NAME_NAME, {
-        value: hz.zoneName,
-        exportName: HOSTED_ZONE_NAME_NAME,
+      new StringParameter(this, "ZoneNameParameter", {
+        parameterName: `/${id}/HostedZone/zoneName`,
+        stringValue: hz.zoneName,
       });
 
-      new CfnOutput(this, HOSTED_ZONE_ID_NAME, {
-        value: hz.hostedZoneId,
-        exportName: HOSTED_ZONE_ID_NAME,
+      new StringParameter(this, "HostedZoneIdParameter", {
+        parameterName: `/${id}/HostedZone/hostedZoneId`,
+        stringValue: hz.hostedZoneId,
       });
 
-      new CfnOutput(this, HOSTED_ZONE_WILDCARD_CERTIFICATE_ARN_NAME, {
-        value: cert.certificateArn,
-        exportName: HOSTED_ZONE_WILDCARD_CERTIFICATE_ARN_NAME,
+      new StringParameter(this, "CertificateArnParameter", {
+        parameterName: `/${id}/Certificate/certificateArn`,
+        stringValue: cert.certificateArn,
       });
     }
 
@@ -202,25 +255,46 @@ export class InfrastructureStack extends Stack {
         baseDb.connections().allowDefaultPortFromAnyIpv4();
       } else baseDb.connections().allowDefaultPortInternally();
 
-      new CfnOutput(this, DATABASE_DNS_WITH_TOKENS_NAME, {
-        value: baseDb.dsnWithTokens,
-        exportName: DATABASE_DNS_WITH_TOKENS_NAME,
+      // TODO this actually resolves our tokens as it stores it - which is not what
+      // new StringParameter(this, "DatabaseDsnWithTokensParameter", {
+      //  parameterName: `/${id}/Database/dsnWithTokens`,
+      //  stringValue: baseDb.dsnWithTokens,
+      //});
+
+      // we want
+      new StringParameter(this, "DatabaseDsnWithPasswordParameter", {
+        parameterName: `/${id}/Database/dsnWithPassword`,
+        stringValue: baseDb.dsnWithTokens,
       });
 
-      new CfnOutput(this, "databaseDsnNoPassword", {
-        value: baseDb.dsnNoPassword,
+      new StringParameter(this, "DatabaseDsnNoPasswordParameter", {
+        parameterName: `/${id}/Database/dsnNoPassword`,
+        stringValue: baseDb.dsnNoPassword,
       });
 
-      new CfnOutput(this, "databaseName", {
-        value: props.database.dbName,
+      new StringParameter(this, "DatabaseHostnameParameter", {
+        parameterName: `/${id}/Database/hostname`,
+        stringValue: baseDb.hostname,
       });
 
-      new CfnOutput(this, "databaseAdminUser", {
-        value: props.database.dbAdminUser,
+      new StringParameter(this, "DatabasePortParameter", {
+        parameterName: `/${id}/Database/port`,
+        stringValue: baseDb.port.toString(),
       });
 
-      new CfnOutput(this, "databaseAdminSecretArn", {
-        value: baseDbSecret.secretArn,
+      new StringParameter(this, "DatabaseDbNameParameter", {
+        parameterName: `/${id}/Database/name`,
+        stringValue: props.database.dbName,
+      });
+
+      new StringParameter(this, "DatabaseDbAdminUserParameter", {
+        parameterName: `/${id}/Database/adminUser`,
+        stringValue: props.database.dbAdminUser,
+      });
+
+      new StringParameter(this, "DatabaseDbAdminSecretArnParameter", {
+        parameterName: `/${id}/Database/adminPasswordSecretArn`,
+        stringValue: baseDbSecret.secretArn,
       });
     }
   }
