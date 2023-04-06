@@ -52,14 +52,14 @@ new CopyOutStack(app, "ElsaDataLocalDevTestCopyOutStack", {
 new CopyOutStack(app, "ElsaDataAgCopyOutStack", {
   // the pipeline can only be deployed to 'dev'
   env: {
-    account: "843407916570",
+    account: "602836945884",
     region: "ap-southeast-2",
   },
   tags: {
     Stack: TAG_STACK_VALUE + "CopyOut",
     [TAG_PRODUCT_KEY]: TAG_PRODUCT_VALUE,
   },
-  isDevelopment: true,
-  infrastructureStack: "ElsaDataLocalDevTestInfrastructureStack",
+  isDevelopment: false,
+  infrastructureStack: "ElsaDataAustralianGenomicsInfrastructureStack",
   infrastructureSubnetSelection: SubnetType.PRIVATE_ISOLATED,
 });

@@ -62,14 +62,16 @@ new InfrastructureStack(app, "ElsaDataAustralianGenomicsInfrastructureStack", {
   namespace: {
     name: ns,
   },
-  /*database:
-  {
-  instanceType: InstanceType.of(
-    InstanceClass.BURSTABLE4_GRAVITON,
-    InstanceSize.SMALL
-  ),
-  dbAdminUser: `elsa_admin`,
-  dbName: `elsa_database`,
-},*/
+  dns: {
+    hostedZoneName: "agha.umccr.org",
+  },
+  database: {
+    instanceType: InstanceType.of(
+      InstanceClass.BURSTABLE4_GRAVITON,
+      InstanceSize.SMALL
+    ),
+    dbAdminUser: `elsa_admin`,
+    dbName: `elsa_database`,
+  },
   secretsPrefix: "ElsaData", // pragma: allowlist secret
 });

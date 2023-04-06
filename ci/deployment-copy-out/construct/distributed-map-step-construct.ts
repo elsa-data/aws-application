@@ -90,7 +90,7 @@ export class DistributedMapStepConstruct extends Construct {
         // we need to be careful of the concurrency of the Fargate RunTask..
         // not sure distributed map knows how to handle back-off??
         // https://docs.aws.amazon.com/AmazonECS/latest/userguide/throttling.html
-        MaxConcurrency: 100,
+        MaxConcurrency: 90,
         ToleratedFailurePercentage: 25,
         ItemReader: {
           ReaderConfig: {

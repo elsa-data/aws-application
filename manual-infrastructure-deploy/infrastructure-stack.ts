@@ -1,6 +1,5 @@
 import {
   aws_secretsmanager as secretsmanager,
-  CfnOutput,
   Duration,
   RemovalPolicy,
   Stack,
@@ -23,7 +22,7 @@ import { HttpNamespace } from "aws-cdk-lib/aws-servicediscovery";
  * - vpc/network - either as a new VPC or re-using existing
  * - a namespace
  * - a DNS zone and certificate
- * - a private bucket for temporary objects (with autoexpiry)
+ * - a private bucket for temporary objects (with auto expiry)
  * - a postgres database
  */
 export class InfrastructureStack extends Stack {
@@ -90,9 +89,13 @@ export class InfrastructureStack extends Stack {
       // temporary bucket
       removalPolicy: RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
+      // for temporary data there is no need to keep multiple versions
       versioned: false,
+      // private temporary data
       publicReadAccess: false,
+      // we don't expect there to be writes from other accounts
       objectOwnership: ObjectOwnership.BUCKET_OWNER_ENFORCED,
+      // aws managed is fine
       encryption: BucketEncryption.S3_MANAGED,
       // a bucket that can expire objects over different expiration delays depending on prefix
       lifecycleRules: [

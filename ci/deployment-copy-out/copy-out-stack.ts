@@ -4,7 +4,7 @@ import { CopyOutStackProps } from "./copy-out-stack-props";
 import { Cluster } from "aws-cdk-lib/aws-ecs";
 import { CopyOutStateMachineConstruct } from "./construct/copy-out-state-machine-construct";
 import { Service } from "aws-cdk-lib/aws-servicediscovery";
-import { createFromAttributes } from "../../manual-infrastructure-deploy/create-from-attributes";
+import { createFromAttributes } from "../../manual-infrastructure-deploy/create-from-lookup";
 
 export class CopyOutStack extends Stack {
   constructor(scope: Construct, id: string, props: CopyOutStackProps) {
@@ -12,22 +12,25 @@ export class CopyOutStack extends Stack {
 
     const { vpc, namespace } = createFromAttributes(
       this,
-      props.infrastructureStack
+      props.infrastructureStack,
+      true,
+      true,
+      false
     );
 
     const cluster = new Cluster(this, "FargateCluster", {
-      vpc,
+      vpc: vpc!,
       enableFargateCapacityProviders: true,
     });
 
     const service = new Service(this, "Service", {
-      namespace: namespace,
+      namespace: namespace!,
       name: "ElsaDataCopyOut",
       description: "Parallel S3 file copying service",
     });
 
     const sm = new CopyOutStateMachineConstruct(this, "CopyOut", {
-      vpc: vpc,
+      vpc: vpc!,
       fargateCluster: cluster,
       namespaceService: service,
       aggressiveTimes: props.isDevelopment,

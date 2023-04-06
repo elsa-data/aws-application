@@ -154,7 +154,7 @@ class EcsFargateSpotOnlyLaunchTarget implements IEcsLaunchTarget {
         ],
         // naughty - this is really nothing to do with LaunchType but this is a way
         // we can set properties in the Steps Run Task ASL
-        // in this case we want to be able to track compute used so we propogate
+        // in this case we want to be able to track compute used so we propagate
         // through the tags from the task definition (which will come from the Stack/Construct)
         PropagateTags: "TASK_DEFINITION",
       },

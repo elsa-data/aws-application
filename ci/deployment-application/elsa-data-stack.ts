@@ -6,7 +6,11 @@ import { Secret } from "aws-cdk-lib/aws-secretsmanager";
 import { Service } from "aws-cdk-lib/aws-servicediscovery";
 import { ElsaDataStackSettings } from "./elsa-data-stack-settings";
 import { StringParameter } from "aws-cdk-lib/aws-ssm";
-import { createFromAttributes } from "../../manual-infrastructure-deploy/create-from-attributes";
+import {
+  createDnsFromLookup,
+  createNamespaceFromLookup,
+  createVpcFromLookup,
+} from "../../manual-infrastructure-deploy/create-from-lookup";
 
 export class ElsaDataStack extends Stack {
   constructor(
@@ -16,7 +20,14 @@ export class ElsaDataStack extends Stack {
   ) {
     super(scope, id, props);
 
-    const { vpc, namespace, hostedZone, certificate } = createFromAttributes(
+    const vpc = createVpcFromLookup(this, props.infrastructureStack);
+
+    const namespace = createNamespaceFromLookup(
+      this,
+      props.infrastructureStack
+    );
+
+    const { hostedZone, certificate } = createDnsFromLookup(
       this,
       props.infrastructureStack
     );
@@ -89,7 +100,7 @@ export class ElsaDataStack extends Stack {
       env: props.env,
       vpc: vpc,
       settings: props.serviceElsaData,
-      hostedZoneCertificate: certificate,
+      hostedZoneCertificate: certificate!,
       hostedZone: hostedZone,
       cloudMapService: service,
       edgeDbDsnNoPassword: edgeDb.dsnForEnvironmentVariable,

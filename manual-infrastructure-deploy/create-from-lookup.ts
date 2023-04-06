@@ -4,7 +4,14 @@ import { Vpc } from "aws-cdk-lib/aws-ec2";
 import { HttpNamespace } from "aws-cdk-lib/aws-servicediscovery";
 import { Certificate } from "aws-cdk-lib/aws-certificatemanager";
 
-export function createFromAttributes(
+/**
+ * Create a useable (subnets etc) VPC CDK object by reflecting
+ * the values out of parameter store.
+ *
+ * @param stack
+ * @param infrastructureStackId
+ */
+export function createVpcFromLookup(
   stack: Stack,
   infrastructureStackId: string
 ) {
@@ -15,7 +22,7 @@ export function createFromAttributes(
     ).split(",");
   };
 
-  const vpc = Vpc.fromVpcAttributes(stack, "VPC", {
+  return Vpc.fromVpcAttributes(stack, "VPC", {
     vpcId: StringParameter.valueFromLookup(
       stack,
       `/${infrastructureStackId}/VPC/vpcId`
@@ -32,26 +39,46 @@ export function createFromAttributes(
       "isolatedSubnetRouteTableIds"
     ),
   });
+}
 
-  const namespace = HttpNamespace.fromHttpNamespaceAttributes(
-    stack,
-    "Namespace",
-    {
-      namespaceArn: StringParameter.valueFromLookup(
-        stack,
-        `/${infrastructureStackId}/HttpNamespace/namespaceArn`
-      ),
-      namespaceId: StringParameter.valueFromLookup(
-        stack,
-        `/${infrastructureStackId}/HttpNamespace/namespaceId`
-      ),
-      namespaceName: StringParameter.valueFromLookup(
-        stack,
-        `/${infrastructureStackId}/HttpNamespace/namespaceName`
-      ),
-    }
-  );
+/**
+ * Create a useable CloudMap namespace object by reflecting values
+ * out of Parameter Store.
+ *
+ * @param stack
+ * @param infrastructureStackId
+ */
+export function createNamespaceFromLookup(
+  stack: Stack,
+  infrastructureStackId: string
+) {
+  return HttpNamespace.fromHttpNamespaceAttributes(stack, "Namespace", {
+    namespaceArn: StringParameter.valueFromLookup(
+      stack,
+      `/${infrastructureStackId}/HttpNamespace/namespaceArn`
+    ),
+    namespaceId: StringParameter.valueFromLookup(
+      stack,
+      `/${infrastructureStackId}/HttpNamespace/namespaceId`
+    ),
+    namespaceName: StringParameter.valueFromLookup(
+      stack,
+      `/${infrastructureStackId}/HttpNamespace/namespaceName`
+    ),
+  });
+}
 
+/**
+ * Create some useable DNS CDK objects by reflecting values out of Parameter
+ * Store.
+ *
+ * @param stack
+ * @param infrastructureStackId
+ */
+export function createDnsFromLookup(
+  stack: Stack,
+  infrastructureStackId: string
+) {
   const hostedZone = route53.HostedZone.fromHostedZoneAttributes(
     stack,
     "HostedZone",
@@ -77,8 +104,6 @@ export function createFromAttributes(
   );
 
   return {
-    vpc,
-    namespace,
     hostedZone,
     certificate,
   };
