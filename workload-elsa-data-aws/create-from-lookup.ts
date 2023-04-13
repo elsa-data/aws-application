@@ -16,10 +16,11 @@ export function createVpcFromLookup(
   infrastructureStackId: string
 ) {
   const getStringListLookup = (n: string) => {
-    return StringParameter.valueFromLookup(
+    const val = StringParameter.valueFromLookup(
       stack,
       `/${infrastructureStackId}/VPC/${n}`
-    ).split(",");
+    );
+    return val.split(",");
   };
 
   return Vpc.fromVpcAttributes(stack, "VPC", {

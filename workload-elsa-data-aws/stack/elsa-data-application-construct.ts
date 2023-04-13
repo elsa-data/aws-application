@@ -109,7 +109,7 @@ export class ElsaDataApplicationConstruct extends Construct {
           containerName: FIXED_CONTAINER_NAME,
           logStreamPrefix: "elsa",
           logRetention: RetentionDays.ONE_MONTH,
-          healthCheckPath: "/",
+          healthCheckPath: "/api/testing/health-check-lite",
           environment: {
             EDGEDB_DSN: props.edgeDbDsnNoPassword,
             ELSA_DATA_META_CONFIG_FOLDERS:
@@ -296,7 +296,7 @@ export class ElsaDataApplicationConstruct extends Construct {
 
     const dockerImageFolder = path.join(
       __dirname,
-      "../../../images/elsa-data-command-invoke-lambda-docker-image"
+      "../../artifacts/elsa-data-command-invoke-lambda-docker-image"
     );
 
     // this command lambda does almost nothing itself - all it does is trigger the creation of

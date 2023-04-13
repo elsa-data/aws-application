@@ -1,6 +1,6 @@
 # Elsa Data (AWS Deploy)
 
-A CDK pipeline for deploying Elsa Data into the UMCCR environments.
+CDK stacks for deploying Elsa Data.
 
 ## Deployment
 

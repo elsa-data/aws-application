@@ -8,25 +8,6 @@ type Only<T, U> = {
 
 type Either<T, U> = Only<T, U> | Only<U, T>;
 
-type DnsSettingSsm = {
-  /**
-   * The SSM parameter name for a parameter holding the DNS settings.
-   * e.g. /cdk/domain_name  =>  dev.umccr.org
-   */
-  readonly hostedZoneNameSsm: string;
-  readonly hostedZoneIdSsm: string;
-  readonly hostedZoneCertificateArnSsm: string;
-};
-
-type DnsSettingsName = {
-  /**
-   * The actual names for DNS settings direct as strings
-   */
-  readonly hostedZoneName: string;
-  readonly hostedZoneId: string;
-  readonly hostedZoneCertificateArn: string;
-};
-
 export interface ElsaDataStackSettings {
   /**
    * Changes the behaviour of most resources (databases etc) to be publicly
@@ -35,10 +16,10 @@ export interface ElsaDataStackSettings {
   isDevelopment?: boolean;
 
   /**
-   * A previously installed stack providing us with network/db/storage/cert infrastructure
+   * The name of a previously installed stack providing us with network/db/storage/cert infrastructure
    * via cloud formation exports.
    */
-  infrastructureStack: string;
+  infrastructureStackName: string;
 
   /**
    * The details of where we will register the services provided by this stack.

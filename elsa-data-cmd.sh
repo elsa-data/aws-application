@@ -7,8 +7,8 @@
 # the namespace must pre-exist as a CloudMap namespace in the account of deployment
 # see the deployed stacks for which values are used per deployment
 # they default to a UMCCR sensible default
-CLOUD_MAP_NAMESPACE="umccr"
-CLOUD_MAP_SERVICE="elsa-data"
+CLOUD_MAP_NAMESPACE="elsa-data"
+CLOUD_MAP_SERVICE="Application"
 
 # our usage help
 helpText() {

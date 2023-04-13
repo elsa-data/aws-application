@@ -1,8 +1,6 @@
 import { Stage, StageProps, Tags } from "aws-cdk-lib";
 import { Construct } from "constructs";
-import { ElsaDataStackSettings } from "./deployment-application/elsa-data-stack-settings";
 import { TAG_STACK_VALUE } from "./elsa-data-constants";
-import { ElsaDataStack } from "./deployment-application/elsa-data-stack";
 
 export class ElsaDataBuildStage extends Stage {
   constructor(

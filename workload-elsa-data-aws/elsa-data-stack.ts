@@ -10,7 +10,7 @@ import {
   createDnsFromLookup,
   createNamespaceFromLookup,
   createVpcFromLookup,
-} from "../../manual-infrastructure-deploy/create-from-lookup";
+} from "./create-from-lookup";
 
 export class ElsaDataStack extends Stack {
   constructor(
@@ -20,16 +20,18 @@ export class ElsaDataStack extends Stack {
   ) {
     super(scope, id, props);
 
-    const vpc = createVpcFromLookup(this, props.infrastructureStack);
+    this.tags.setTag("umccr-org:Stack", id);
+
+    const vpc = createVpcFromLookup(this, props.infrastructureStackName);
 
     const namespace = createNamespaceFromLookup(
       this,
-      props.infrastructureStack
+      props.infrastructureStackName
     );
 
     const { hostedZone, certificate } = createDnsFromLookup(
       this,
-      props.infrastructureStack
+      props.infrastructureStackName
     );
 
     // TODO: clean this up - ideally we would have all the certs in the master Elsa settings secrets
@@ -76,7 +78,7 @@ export class ElsaDataStack extends Stack {
       edgeDbService: {
         baseDsn: StringParameter.valueFromLookup(
           this,
-          `/${props.infrastructureStack}/Database/dsnWithPassword`
+          `/${props.infrastructureStackName}/Database/dsnWithPassword`
         ),
         superUser: "elsa_superuser",
         desiredCount: 1,

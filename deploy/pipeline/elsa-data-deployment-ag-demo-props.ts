@@ -1,6 +1,6 @@
 import "source-map-support/register";
 import { join } from "path";
-import { ElsaDataStackSettings } from "./deployment-application/elsa-data-stack-settings";
+import { ElsaDataStackSettings } from "../../workload-elsa-data-aws/elsa-data-stack-settings";
 import { StackProps } from "aws-cdk-lib";
 
 /**
@@ -15,7 +15,7 @@ export function getDeploymentAgDemoProps(): StackProps & ElsaDataStackSettings {
     serviceRegistration: {
       cloudMapServiceName: "elsa-data-demo",
     },
-    infrastructureStack: "InfrastructureStack",
+    infrastructureStackName: "InfrastructureStack",
     serviceElsaData: {
       urlPrefix: "elsa-demo",
       imageFolder: join(
