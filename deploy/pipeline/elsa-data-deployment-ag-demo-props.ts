@@ -35,7 +35,7 @@ export function getDeploymentAgDemoProps(): StackProps & ElsaDataStackSettings {
         enableAccessPoints: false,
       },
       metaConfigSources:
-        "file('base') file('dev-common') file('dev-deployed') file('datasets') aws-secret('ElsaDataDevDeployed')",
+        "file('base') file('umccr-garvan-dev-super-admins') file('dev-deployed') file('datasets') aws-secret('ElsaDataDevDeployed')",
       metaConfigFolders: "./config:./extra-config",
     },
     serviceEdgeDb: {
