@@ -216,6 +216,14 @@ export class ElsaDataApplicationConstruct extends Construct {
       );
     }
 
+    // for AwsDiscoveryService
+    policy.addStatements(new PolicyStatement({
+      actions: [
+        "servicediscovery:DiscoverInstances"
+      ],
+      resources: ["*"]
+    }));
+
     // the permissions of the running container (i.e all AWS functionality used by Elsa Data code)
     privateServiceWithLoadBalancer.service.taskDefinition.taskRole.attachInlinePolicy(
       policy
