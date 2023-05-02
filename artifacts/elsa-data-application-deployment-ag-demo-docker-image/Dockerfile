@@ -3,8 +3,7 @@
 ARG ELSA_DATA_BASE_IMAGE="ghcr.io/umccr/elsa-data:latest"
 
 # use a dynamic base
-
 FROM --platform=linux/amd64 $ELSA_DATA_BASE_IMAGE
 
 # add in specific configs for AG
-COPY datasets.json5 /extra-config/
+COPY *.json5 /ag-config/
