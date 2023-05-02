@@ -1,4 +1,4 @@
-import { ElsaDataApplicationStackSettings } from "./stack/elsa-data-application-stack-settings";
+import {ElsaDataApplicationStackSettings} from "./stack/elsa-data-application-stack-settings";
 
 type Only<T, U> = {
   [P in keyof T]: T[P];
@@ -14,6 +14,11 @@ export interface ElsaDataStackSettings {
    * accessible (albeit secure/password protected)
    */
   isDevelopment?: boolean;
+
+  /**
+   * Forces a new deployment of all stacks by updating the description. Defaults to false.
+   */
+  forceDeployment?: boolean;
 
   /**
    * The name of a previously installed stack providing us with network/db/storage/cert infrastructure
