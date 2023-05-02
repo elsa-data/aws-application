@@ -3,8 +3,6 @@ import {
   aws_ecs as ecs,
   CfnOutput,
   Duration,
-  NestedStack,
-  RemovalPolicy,
   Stack,
   StackProps,
 } from "aws-cdk-lib";
@@ -14,7 +12,6 @@ import { DockerImageAsset, Platform } from "aws-cdk-lib/aws-ecr-assets";
 import { DockerServiceWithHttpsLoadBalancerConstruct } from "../construct/docker-service-with-https-load-balancer-construct";
 import { Policy, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { ISecret } from "aws-cdk-lib/aws-secretsmanager";
-import { Bucket, BucketEncryption } from "aws-cdk-lib/aws-s3";
 import { DockerImageCode, DockerImageFunction } from "aws-cdk-lib/aws-lambda";
 import { IVpc, SecurityGroup, SubnetSelection } from "aws-cdk-lib/aws-ec2";
 import {
@@ -109,7 +106,7 @@ export class ElsaDataApplicationConstruct extends Construct {
           containerName: FIXED_CONTAINER_NAME,
           logStreamPrefix: "elsa",
           logRetention: RetentionDays.ONE_MONTH,
-          healthCheckPath: "/api/testing/health-check-lite",
+          healthCheckPath: "/api/health/check",
           environment: {
             EDGEDB_DSN: props.edgeDbDsnNoPassword,
             ELSA_DATA_META_CONFIG_FOLDERS:
@@ -218,6 +215,14 @@ export class ElsaDataApplicationConstruct extends Construct {
         })
       );
     }
+
+    // for AwsDiscoveryService
+    policy.addStatements(new PolicyStatement({
+      actions: [
+        "servicediscovery:DiscoverInstances"
+      ],
+      resources: ["*"]
+    }));
 
     // the permissions of the running container (i.e all AWS functionality used by Elsa Data code)
     privateServiceWithLoadBalancer.service.taskDefinition.taskRole.attachInlinePolicy(

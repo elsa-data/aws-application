@@ -26,7 +26,7 @@ new ElsaDataStack(app, "ElsaDataLocalDevTestStack", {
     urlPrefix: "elsa",
     imageBaseName: `ghcr.io/umccr/elsa-data:${DEPLOYED_IMAGE_TAG}`,
     metaConfigSources:
-      "file('base') file('dev-common') file('dev-deployed') file('datasets') aws-secret('ElsaDataDevDeployed')",
+      "file('base') file('umccr-garvan-dev-super-admins') file('dev-deployed') file('datasets') aws-secret('ElsaDataDevDeployed')",
     awsPermissions: {
       dataBucketPaths: {
         "umccr-10f-data-dev": ["ASHKENAZIM/*"],
