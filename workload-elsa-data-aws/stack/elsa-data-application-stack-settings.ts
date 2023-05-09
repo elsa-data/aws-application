@@ -18,7 +18,12 @@ export type ElsaDataApplicationStackSettings = {
    * Elsa Data to deploy. If this is not present, the `imageBaseName`
    * will be used directly from its public registry.
    */
-  readonly imageFolder?: string;
+  readonly buildLocal?: {
+    folder: string,
+    version?: string,
+    built?: string,
+    revision?: string,
+  };
 
   /**
    * The Docker image name for the base image of Elsa Data that will use for

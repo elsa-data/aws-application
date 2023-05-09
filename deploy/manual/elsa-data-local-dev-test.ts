@@ -18,13 +18,17 @@ new ElsaDataStack(app, "ElsaDataLocalDevTestStack", {
     "umccr-org:Product": "ElsaData",
   },
   isDevelopment: true,
+  forceDeployment: true,
   infrastructureStackName: "ElsaDataLocalDevTestInfrastructureStack",
   serviceRegistration: {
     cloudMapServiceName: "Application",
   },
   serviceElsaData: {
     urlPrefix: "elsa",
-    imageBaseName: `ghcr.io/umccr/elsa-data:${DEPLOYED_IMAGE_TAG}`,
+    imageBaseName: "",
+    buildLocal: {
+      folder: ""
+    },
     metaConfigSources:
       "file('base') file('umccr-garvan-dev-super-admins') file('dev-deployed') file('datasets') aws-secret('ElsaDataDevDeployed')",
     awsPermissions: {
@@ -39,7 +43,7 @@ new ElsaDataStack(app, "ElsaDataLocalDevTestStack", {
     cpu: 512,
   },
   serviceEdgeDb: {
-    version: "2.13",
+    version: "3.0-beta.1",
     memoryLimitMiB: 2048,
     cpu: 1024,
     // the URL prefix of the database UI (which is exposed due to isDevelopment=true)
