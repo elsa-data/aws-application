@@ -109,6 +109,7 @@ export class ElsaDataApplicationConstruct extends Construct {
           healthCheckPath: "/api/health/check",
           environment: {
             EDGEDB_DSN: props.edgeDbDsnNoPassword,
+            EDGEDB_CLIENT_TLS_SECURITY: "insecure",
             ELSA_DATA_META_CONFIG_FOLDERS:
               props.settings.metaConfigFolders || "./config",
             ELSA_DATA_META_CONFIG_SOURCES: props.settings.metaConfigSources,
@@ -119,7 +120,9 @@ export class ElsaDataApplicationConstruct extends Construct {
             ELSA_DATA_CONFIG_AWS_TEMP_BUCKET: "tempbucket",
             // only in development are we likely to be using an image that is not immutable
             // i.e. dev we might use "latest".. but in production we should be using "1.0.1" for example
-            ECS_IMAGE_PULL_BEHAVIOR: props.isDevelopment ? "default" : "once",
+            //  props.isDevelopment ? "default" : "once",
+            // until we have everything working - lets leave it at default
+            ECS_IMAGE_PULL_BEHAVIOR: "default",
           },
           secrets: {
             EDGEDB_PASSWORD: ecs.Secret.fromSecretsManager(
@@ -217,12 +220,12 @@ export class ElsaDataApplicationConstruct extends Construct {
     }
 
     // for AwsDiscoveryService
-    policy.addStatements(new PolicyStatement({
-      actions: [
-        "servicediscovery:DiscoverInstances"
-      ],
-      resources: ["*"]
-    }));
+    policy.addStatements(
+      new PolicyStatement({
+        actions: ["servicediscovery:DiscoverInstances"],
+        resources: ["*"],
+      })
+    );
 
     // the permissions of the running container (i.e all AWS functionality used by Elsa Data code)
     privateServiceWithLoadBalancer.service.taskDefinition.taskRole.attachInlinePolicy(
@@ -289,7 +292,7 @@ export class ElsaDataApplicationConstruct extends Construct {
     taskDefinition: TaskDefinition,
     taskSecurityGroups: SecurityGroup[]
   ): DockerImageFunction {
-    const commandLambdaSecurityGroup = new SecurityGroup(
+    /*const commandLambdaSecurityGroup = new SecurityGroup(
       this,
       "CommandLambdaSecurityGroup",
       {
@@ -297,7 +300,7 @@ export class ElsaDataApplicationConstruct extends Construct {
         // this needs outbound to be able to make the AWS calls it needs (don't want to add PrivateLink)
         allowAllOutbound: true,
       }
-    );
+    ); */
 
     const dockerImageFolder = path.join(
       __dirname,
@@ -311,9 +314,9 @@ export class ElsaDataApplicationConstruct extends Construct {
     const f = new DockerImageFunction(this, "CommandLambda", {
       memorySize: 128,
       code: DockerImageCode.fromImageAsset(dockerImageFolder),
-      vpcSubnets: subnetSelection,
-      vpc: vpc,
-      securityGroups: [commandLambdaSecurityGroup],
+      //vpcSubnets: subnetSelection,
+      //vpc: vpc,
+      //securityGroups: [commandLambdaSecurityGroup],
       timeout: Duration.minutes(14),
       environment: {
         CLUSTER_ARN: cluster.clusterArn,

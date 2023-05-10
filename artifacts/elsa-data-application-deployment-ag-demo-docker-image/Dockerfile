@@ -1,8 +1,6 @@
+ARG ELSA_DATA_BASE_IMAGE
 
-# we have a sensible default - but this lets our CDK build override this using --build-arg ELSA_DATA_BASE_IMAGE=localimage:latest
-ARG ELSA_DATA_BASE_IMAGE="ghcr.io/umccr/elsa-data:latest"
-
-# use a dynamic base
+# use a dynamic base that MUST be specified as part of the CDK build step
 FROM --platform=linux/amd64 $ELSA_DATA_BASE_IMAGE
 
 # add in specific configs for AG

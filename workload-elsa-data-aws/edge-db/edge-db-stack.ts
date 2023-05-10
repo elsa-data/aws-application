@@ -5,17 +5,15 @@ import {
   aws_secretsmanager as secretsmanager,
   CfnOutput,
   Duration,
-  NestedStack,
   StackProps,
 } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import { Protocol } from "aws-cdk-lib/aws-elasticloadbalancingv2";
-import { Certificate, ICertificate } from "aws-cdk-lib/aws-certificatemanager";
-import { EdgeDbServiceConstruct } from "./edge-db-construct/edge-db-service-construct";
-import { EdgeDbLoadBalancerConstruct } from "./edge-db-construct/edge-db-load-balancer-construct";
+import { ICertificate } from "aws-cdk-lib/aws-certificatemanager";
+import { EdgeDbServiceConstruct } from "./edge-db-service-construct";
+import { EdgeDbLoadBalancerConstruct } from "./edge-db-load-balancer-construct";
 import { ISecret } from "aws-cdk-lib/aws-secretsmanager";
-import { InstanceBaseDatabase } from "./edge-db-construct/rds/instance-base-database";
-import { InstanceClass, InstanceSize, InstanceType } from "aws-cdk-lib/aws-ec2";
+import { ISecurityGroup } from "aws-cdk-lib/aws-ec2";
 
 interface Props extends StackProps {
   // if set to true - changes the behaviour of most resources to be publicly accessible (still secure though)
@@ -29,9 +27,6 @@ interface Props extends StackProps {
   // the underlying network infrastructure that has already been setup and that we will be installing into
   baseNetwork: {
     vpc: ec2.IVpc;
-
-    hostedPrefix: string;
-    hostedZone: route53.IHostedZone;
   };
 
   // the configuration of the fargate service that is edge db itself
@@ -49,6 +44,8 @@ interface Props extends StackProps {
      */
     readonly baseDsn: string;
 
+    readonly baseSecurityGroup: ISecurityGroup;
+
     superUser: string;
     desiredCount: number;
     cpu: number;
@@ -61,10 +58,12 @@ interface Props extends StackProps {
   edgeDbLoadBalancer: {
     port: number;
 
-    // a publically accessible EdgeDb UI is only created if isDevelopment is true and this is filled in
+    // a publicly accessible EdgeDb UI is only created if isDevelopment is true and this is filled in
     ui?: {
       port: number;
       certificate: ICertificate;
+      hostedPrefix: string;
+      hostedZone: route53.IHostedZone;
     };
   };
 }
@@ -94,6 +93,7 @@ export class EdgeDbConstruct extends Construct {
       isDevelopment: props.isDevelopment,
       vpc: props.baseNetwork.vpc,
       baseDbDsn: props.edgeDbService.baseDsn,
+      baseDbSecurityGroup: props.edgeDbService.baseSecurityGroup,
       desiredCount: props.edgeDbService.desiredCount,
       cpu: props.edgeDbService.cpu,
       memory: props.edgeDbService.memory,
@@ -105,21 +105,17 @@ export class EdgeDbConstruct extends Construct {
       certificateKeySecret: props.edgeDbService.key,
     });
 
-    edgeDbService.service.connections.allowFromAnyIpv4(
-      ec2.Port.tcp(edgeDbService.servicePort)
-    );
-
     const edgeDbLoadBalancer = new EdgeDbLoadBalancerConstruct(
       this,
       "EdgeDbLoadBalancer",
       {
-        isDevelopment: props.isDevelopment,
+        internetFacing: true, // !!props.isDevelopment,
         vpc: props.baseNetwork.vpc,
         tcpPassthroughPort: props.edgeDbLoadBalancer.port,
         service: edgeDbService.service,
         servicePort: edgeDbService.servicePort,
-        hostedPrefix: props.baseNetwork.hostedPrefix,
-        hostedZone: props.baseNetwork.hostedZone,
+        tlsHostedPrefix: props.edgeDbLoadBalancer.ui?.hostedPrefix,
+        tlsHostedZone: props.edgeDbLoadBalancer.ui?.hostedZone,
         tlsTerminatePort: props.edgeDbLoadBalancer.ui?.port,
         tlsHostedCertificate: props.edgeDbLoadBalancer.ui?.certificate,
         serviceHealthCheck: {
@@ -141,7 +137,7 @@ export class EdgeDbConstruct extends Construct {
       `edgedb://` +
       `${props.edgeDbService.superUser}` +
       `@` +
-      `${props.baseNetwork.hostedPrefix}.${props.baseNetwork.hostedZone.zoneName}` +
+      `${edgeDbLoadBalancer.dnsName}` +
       `:` +
       `${props.edgeDbLoadBalancer.port}` +
       `/` +
@@ -155,7 +151,7 @@ export class EdgeDbConstruct extends Construct {
     if (props.isDevelopment) {
       if (props.edgeDbLoadBalancer.ui) {
         new CfnOutput(this, "EdgeDbUiUrl", {
-          value: `https://${props.baseNetwork.hostedPrefix}.${props.baseNetwork.hostedZone.zoneName}:${props.edgeDbLoadBalancer.ui.port}/ui`,
+          value: `https://${edgeDbLoadBalancer.dnsName}:${props.edgeDbLoadBalancer.ui.port}/ui`,
         });
       }
     }

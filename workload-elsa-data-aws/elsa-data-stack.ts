@@ -1,12 +1,13 @@
 import { aws_ecs as ecs, Stack, StackProps } from "aws-cdk-lib";
 import { Construct } from "constructs";
-import { EdgeDbConstruct } from "./stack/edge-db-stack";
-import { ElsaDataApplicationConstruct } from "./stack/elsa-data-application-construct";
+import { EdgeDbConstruct } from "./edge-db/edge-db-stack";
+import { ElsaDataApplicationConstruct } from "./elsa-data-application/elsa-data-application-construct";
 import { Secret } from "aws-cdk-lib/aws-secretsmanager";
 import { Service } from "aws-cdk-lib/aws-servicediscovery";
 import { ElsaDataStackSettings } from "./elsa-data-stack-settings";
 import { StringParameter } from "aws-cdk-lib/aws-ssm";
 import {
+  createDatabaseSecurityGroupFromLookup,
   createDnsFromLookup,
   createNamespaceFromLookup,
   createVpcFromLookup,
@@ -20,8 +21,6 @@ export class ElsaDataStack extends Stack {
   ) {
     super(scope, id, props);
 
-    this.tags.setTag("umccr-org:Stack", id);
-
     const vpc = createVpcFromLookup(this, props.infrastructureStackName);
 
     const namespace = createNamespaceFromLookup(
@@ -34,28 +33,36 @@ export class ElsaDataStack extends Stack {
       props.infrastructureStackName
     );
 
-    // TODO: clean this up - ideally we would have all the certs in the master Elsa settings secrets
-    // const elsaSecret = Secret.fromSecretNameV2(this, "ElsaSecret", "Elsa");
-    // https://github.com/aws/containers-roadmap/issues/385
-
-    const edgeDbCa = Secret.fromSecretNameV2(
+    const dbSecurityGroup = createDatabaseSecurityGroupFromLookup(
       this,
-      "CaSecret",
-      "elsa/tls/rootCA"
-    );
-    const edgeDbKey = Secret.fromSecretNameV2(
-      this,
-      "KeySecret",
-      "elsa/tls/key"
-    );
-    const edgeDbCert = Secret.fromSecretNameV2(
-      this,
-      "CertSecret",
-      "elsa/tls/cert"
+      props.infrastructureStackName
     );
 
-    const elsaEdgeDbCert = ecs.Secret.fromSecretsManager(edgeDbCert);
-    const elsaEdgeDbKey = ecs.Secret.fromSecretsManager(edgeDbKey); // ecs.Secret.fromSecretsManager(elsaSecret, "edgeDb.tlsKey");
+    let elsaEdgeDbCert: ecs.Secret | undefined = undefined;
+    let elsaEdgeDbKey: ecs.Secret | undefined = undefined;
+
+    if (
+      props.serviceEdgeDb.certSecretName &&
+      props.serviceEdgeDb.keySecretName
+    ) {
+      const edgeDbKey = Secret.fromSecretNameV2(
+        this,
+        "KeySecret",
+        props.serviceEdgeDb.keySecretName
+      );
+      const edgeDbCert = Secret.fromSecretNameV2(
+        this,
+        "CertSecret",
+        props.serviceEdgeDb.certSecretName
+      );
+
+      // TODO: clean this up - ideally we would have all the certs in the master Elsa settings secrets
+      // const elsaSecret = Secret.fromSecretNameV2(this, "ElsaSecret", "Elsa");
+      // https://github.com/aws/containers-roadmap/issues/385
+      // ecs.Secret.fromSecretsManager(elsaSecret, "edgeDb.tlsKey");
+      elsaEdgeDbCert = ecs.Secret.fromSecretsManager(edgeDbCert);
+      elsaEdgeDbKey = ecs.Secret.fromSecretsManager(edgeDbKey);
+    }
 
     const service = new Service(this, "Service", {
       namespace: namespace,
@@ -64,18 +71,16 @@ export class ElsaDataStack extends Stack {
     });
 
     /**
-     * Create Postgres Db and EdgeDb server
+     * Create EdgeDb server
      */
-    const edgeDb = new EdgeDbConstruct(this, "DatabaseStack", {
-      stackName: `elsaDatabaseStack`,
+    const edgeDb = new EdgeDbConstruct(this, "EdgeDb", {
       isDevelopment: props.isDevelopment,
       secretsPrefix: "ElsaData", // pragma: allowlist secret
       baseNetwork: {
         vpc: vpc,
-        hostedPrefix: "elsa-edge-db",
-        hostedZone: hostedZone,
       },
       edgeDbService: {
+        baseSecurityGroup: dbSecurityGroup,
         baseDsn: StringParameter.valueFromLookup(
           this,
           `/${props.infrastructureStackName}/Database/dsnWithPassword`
@@ -90,11 +95,15 @@ export class ElsaDataStack extends Stack {
       },
       edgeDbLoadBalancer: {
         port: props.serviceEdgeDb.dbUrlPort || 4000,
-        // note we always specify these settings but the UI will only be enabled when props.isDevelopment=true
-        ui: {
-          port: props.serviceEdgeDb.dbUiUrlPort || 4001,
-          certificate: certificate,
-        },
+        // only attempt to switch on the UI for development
+        ui: props.isDevelopment
+          ? {
+              port: props.serviceEdgeDb.dbUiUrlPort || 4001,
+              certificate: certificate,
+              hostedPrefix: "elsa-edge-db",
+              hostedZone: hostedZone,
+            }
+          : undefined,
       },
     });
 

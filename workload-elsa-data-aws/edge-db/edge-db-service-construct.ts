@@ -14,12 +14,16 @@ import {
   Protocol,
 } from "aws-cdk-lib/aws-ecs";
 import { ISecret } from "aws-cdk-lib/aws-secretsmanager";
+import { ISecurityGroup, SecurityGroup } from "aws-cdk-lib/aws-ec2";
 
 interface Props {
   isDevelopment?: boolean;
 
   // the VPC that the service will live in
   vpc: ec2.IVpc;
+
+  // the security group of the database this service needs to connect to
+  baseDbSecurityGroup: ISecurityGroup;
 
   // the DSN of the postgres db it will use for its store (must include base db user/pw)
   baseDbDsn: string;
@@ -92,12 +96,13 @@ export class EdgeDbServiceConstruct extends Construct {
     const containerName = "edge-db";
 
     const env: { [k: string]: string } = {
-      // EDGEDB_SERVER_SECURITY: "insecure_dev_mode",
       EDGEDB_DOCKER_LOG_LEVEL: "debug",
       // the DSN (including postgres user/pw) pointing to the base database
       EDGEDB_SERVER_BACKEND_DSN: props.baseDbDsn,
       // we allow the superuser name to be set
       EDGEDB_SERVER_USER: props.superUser,
+      // DO NOT ENABLE
+      // EDGEDB_SERVER_DEFAULT_AUTH_METHOD: "Trust"
     };
 
     const secrets: { [k: string]: ecs.Secret } = {
@@ -145,6 +150,13 @@ export class EdgeDbServiceConstruct extends Construct {
       protocol: Protocol.TCP,
     });
 
+    // we can't put the EdgeDb service *only* in the db security group because that group has no egress
+    // rules
+    // so we also need to make our own more permissive group
+    const edgeDbSecurityGroup = new SecurityGroup(this, "EdgeDbSecurityGroup", {
+      vpc: props.vpc,
+    });
+
     this._service = new FargateService(this, "EdgeDbService", {
       // even in dev mode we never want to assign public ips.. we always want to access via network load balancer
       assignPublicIp: false,
@@ -155,7 +167,13 @@ export class EdgeDbServiceConstruct extends Construct {
         // we need egress in order to fetch images?? if we setup with private link maybe avoid? one to investigate?
         subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
       },
+      securityGroups: [edgeDbSecurityGroup, props.baseDbSecurityGroup],
     });
+
+    edgeDbSecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.tcp(this.EDGE_DB_PORT)
+    );
   }
 
   public get service(): FargateService {

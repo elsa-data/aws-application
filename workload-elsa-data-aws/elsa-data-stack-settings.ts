@@ -1,4 +1,5 @@
-import { ElsaDataApplicationStackSettings } from "./stack/elsa-data-application-stack-settings";
+import { ElsaDataApplicationStackSettings } from "./elsa-data-application/elsa-data-application-stack-settings";
+import { ISecret } from "aws-cdk-lib/aws-secretsmanager";
 
 type Only<T, U> = {
   [P in keyof T]: T[P];
@@ -52,6 +53,16 @@ export interface ElsaDataStackSettings {
      * The cpu assigned to the Edge Db service
      */
     readonly cpu: number;
+
+    /**
+     * If present, the name of a secret containing a key for EdgeDb
+     */
+    readonly keySecretName?: string;
+
+    /**
+     * If present, the name of a secret containing a cert for EdgeDb
+     */
+    readonly certSecretName?: string;
 
     /**
      * The db URL prefix (name before first dot in hostname) - if

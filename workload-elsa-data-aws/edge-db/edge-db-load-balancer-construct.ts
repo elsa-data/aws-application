@@ -13,19 +13,20 @@ import { SubnetType } from "aws-cdk-lib/aws-ec2";
 import { LoadBalancerTarget } from "aws-cdk-lib/aws-route53-targets";
 
 interface Props {
-  isDevelopment?: boolean;
+  // whether the load balancer for this EdgeDb should face the internet and be public
+  internetFacing: boolean;
 
   // the VPC that the load balancer will live in
   vpc: ec2.IVpc;
 
-  // the name record that will be set up for the load balancer
-  hostedPrefix: string;
-  hostedZone: IHostedZone;
-
-  // the port that the load balancer will listen on for TCP passthrough work
+  // the port that the load balancer will listen on for TCP passthrough work - this is the normal
+  // way for interacting with EdgeDb (i.e. edgedb:// protocol)
   tcpPassthroughPort: number;
 
   // optionally a port that will be listened on with TLS termination
+  // this will forward through to the UI (https://<tls.zone>/ui -> https://<fargate>/ui)
+  tlsHostedPrefix?: string;
+  tlsHostedZone?: IHostedZone;
   tlsTerminatePort?: number;
   tlsHostedCertificate?: ICertificate;
 
@@ -44,6 +45,7 @@ interface Props {
  */
 export class EdgeDbLoadBalancerConstruct extends Construct {
   private readonly _lb: NetworkLoadBalancer;
+  private readonly _dns: string;
 
   constructor(scope: Construct, id: string, props: Props) {
     super(scope, id);
@@ -51,18 +53,16 @@ export class EdgeDbLoadBalancerConstruct extends Construct {
     this._lb = new NetworkLoadBalancer(this, "LoadBalancer", {
       vpc: props.vpc,
       vpcSubnets: {
-        subnetType: props.isDevelopment
+        subnetType: props.internetFacing
           ? SubnetType.PUBLIC
           : SubnetType.PRIVATE_WITH_EGRESS,
       },
-      internetFacing: !!props.isDevelopment,
+      internetFacing: props.internetFacing,
     });
 
-    new ARecord(this, "DNS", {
-      zone: props.hostedZone,
-      recordName: props.hostedPrefix,
-      target: RecordTarget.fromAlias(new LoadBalancerTarget(this._lb)),
-    });
+    // we default to using the load balancer internal DNS name - and only switch on real DNS
+    // if needed later
+    this._dns = this._lb.loadBalancerDnsName;
 
     // the main required load balancer is TCP traffic that comes in
     // that we relay directly to the EdgeDb service (where it does it own TLS layer)
@@ -84,16 +84,41 @@ export class EdgeDbLoadBalancerConstruct extends Construct {
     }
 
     // optionally we can also set up another port where the NLB will terminate TLS for us
-    if (props.tlsTerminatePort && props.tlsHostedCertificate) {
+    // (in which case we also need to setup DNS for the load balancer)
+    if (
+      props.tlsTerminatePort &&
+      props.tlsHostedCertificate &&
+      props.tlsHostedZone &&
+      props.tlsHostedPrefix
+    ) {
+      if (!props.internetFacing) {
+        throw new Error(
+          "It is an error to specify TLS termination for the EdgeDb network load balancer if the balancer is not internet facing"
+        );
+      }
+
+      new ARecord(this, "DNS", {
+        zone: props.tlsHostedZone,
+        recordName: props.tlsHostedPrefix,
+        target: RecordTarget.fromAlias(new LoadBalancerTarget(this._lb)),
+      });
+
+      this._dns = `${props.tlsHostedPrefix}.${props.tlsHostedZone.zoneName}`;
+
       const tlsListener = this._lb.addListener("TlsListener", {
         port: props.tlsTerminatePort,
         certificates: [props.tlsHostedCertificate],
+        // this is the protocol coming _into_ the network load balancer - we will terminate
+        // the TLS with our hostedCertificate
         protocol: Protocol.TLS,
         sslPolicy: SslPolicy.RECOMMENDED,
       });
 
       const tg = tlsListener.addTargets("TlsTargetGroup", {
         port: props.servicePort,
+        // this is the protocol going _out_ to the fargate service
+        // note we can forward to a TLS target with self-signed certs (like EdgeDb) because network load balancer
+        // supports this even if we don't have the full cert chain etc
         protocol: Protocol.TLS,
         targets: [props.service],
       });
@@ -110,5 +135,9 @@ export class EdgeDbLoadBalancerConstruct extends Construct {
 
   public get loadBalancer(): NetworkLoadBalancer {
     return this._lb;
+  }
+
+  public get dnsName(): string {
+    return this._dns;
   }
 }
