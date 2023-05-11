@@ -25,10 +25,7 @@ new ElsaDataStack(app, "ElsaDataLocalDevTestStack", {
   },
   serviceElsaData: {
     urlPrefix: "elsa",
-    imageBaseName: "",
-    buildLocal: {
-      folder: ""
-    },
+    imageBaseName: `ghcr.io/umccr/elsa-data:${DEPLOYED_IMAGE_TAG}`,
     metaConfigSources:
       "file('base') file('umccr-garvan-dev-super-admins') file('dev-deployed') file('datasets') aws-secret('ElsaDataDevDeployed')",
     awsPermissions: {

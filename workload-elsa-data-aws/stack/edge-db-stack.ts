@@ -5,17 +5,14 @@ import {
   aws_secretsmanager as secretsmanager,
   CfnOutput,
   Duration,
-  NestedStack,
   StackProps,
 } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import { Protocol } from "aws-cdk-lib/aws-elasticloadbalancingv2";
-import { Certificate, ICertificate } from "aws-cdk-lib/aws-certificatemanager";
+import { ICertificate } from "aws-cdk-lib/aws-certificatemanager";
 import { EdgeDbServiceConstruct } from "./edge-db-construct/edge-db-service-construct";
 import { EdgeDbLoadBalancerConstruct } from "./edge-db-construct/edge-db-load-balancer-construct";
 import { ISecret } from "aws-cdk-lib/aws-secretsmanager";
-import { InstanceBaseDatabase } from "./edge-db-construct/rds/instance-base-database";
-import { InstanceClass, InstanceSize, InstanceType } from "aws-cdk-lib/aws-ec2";
 
 interface Props extends StackProps {
   // if set to true - changes the behaviour of most resources to be publicly accessible (still secure though)
