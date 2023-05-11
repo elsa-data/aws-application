@@ -65,6 +65,11 @@ export interface ElsaDataStackSettings {
     readonly dbUrlPrefix?: string;
 
     /**
+     * Prefix to use for secrets.
+     */
+    readonly secretPrefix: string;
+
+    /**
      * The db URL port - if
      * the database has been made public via isDevelopment.
      */

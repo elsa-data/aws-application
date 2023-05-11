@@ -65,10 +65,10 @@ export class ElsaDataStack extends Stack {
     const edgeDb = new EdgeDbConstruct(this, "DatabaseStack", {
       stackName: `elsaDatabaseStack`,
       isDevelopment: props.isDevelopment,
-      secretsPrefix: "ElsaData", // pragma: allowlist secret
+      secretsPrefix: props.serviceEdgeDb.secretPrefix, // pragma: allowlist secret
       baseNetwork: {
         vpc: vpc,
-        hostedPrefix: "elsa-edge-db",
+        hostedPrefix: props.serviceEdgeDb.dbUrlPrefix ?? "elsa-edge-db",
         hostedZone: hostedZone,
       },
       edgeDbService: {
