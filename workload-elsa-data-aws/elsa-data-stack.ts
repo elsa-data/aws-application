@@ -1,16 +1,12 @@
-import { aws_ecs as ecs, Stack, StackProps } from "aws-cdk-lib";
-import { Construct } from "constructs";
-import { EdgeDbConstruct } from "./stack/edge-db-stack";
-import { ElsaDataApplicationConstruct } from "./stack/elsa-data-application-construct";
-import { Secret } from "aws-cdk-lib/aws-secretsmanager";
-import { Service } from "aws-cdk-lib/aws-servicediscovery";
-import { ElsaDataStackSettings } from "./elsa-data-stack-settings";
-import { StringParameter } from "aws-cdk-lib/aws-ssm";
-import {
-  createDnsFromLookup,
-  createNamespaceFromLookup,
-  createVpcFromLookup,
-} from "./create-from-lookup";
+import {aws_ecs as ecs, Stack, StackProps} from "aws-cdk-lib";
+import {Construct} from "constructs";
+import {EdgeDbConstruct} from "./stack/edge-db-stack";
+import {ElsaDataApplicationConstruct} from "./stack/elsa-data-application-construct";
+import {Secret} from "aws-cdk-lib/aws-secretsmanager";
+import {Service} from "aws-cdk-lib/aws-servicediscovery";
+import {ElsaDataStackSettings} from "./elsa-data-stack-settings";
+import {StringParameter} from "aws-cdk-lib/aws-ssm";
+import {createDnsFromLookup, createNamespaceFromLookup, createVpcFromLookup,} from "./create-from-lookup";
 
 export class ElsaDataStack extends Stack {
   constructor(
@@ -18,7 +14,7 @@ export class ElsaDataStack extends Stack {
     id: string,
     props: StackProps & ElsaDataStackSettings
   ) {
-    super(scope, id, props);
+    super(scope, id, { ...props, ...(props.forceDeployment && { description: `${new Date()}` }) });
 
     this.tags.setTag("umccr-org:Stack", id);
 
@@ -69,10 +65,10 @@ export class ElsaDataStack extends Stack {
     const edgeDb = new EdgeDbConstruct(this, "DatabaseStack", {
       stackName: `elsaDatabaseStack`,
       isDevelopment: props.isDevelopment,
-      secretsPrefix: "ElsaData", // pragma: allowlist secret
+      secretsPrefix: props.serviceEdgeDb.secretPrefix, // pragma: allowlist secret
       baseNetwork: {
         vpc: vpc,
-        hostedPrefix: "elsa-edge-db",
+        hostedPrefix: props.serviceEdgeDb.dbUrlPrefix ?? "elsa-edge-db",
         hostedZone: hostedZone,
       },
       edgeDbService: {
