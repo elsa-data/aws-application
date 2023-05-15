@@ -29,3 +29,8 @@ the desired admin command. _IT MUST BE INVOKED IN THE ACCOUNT OF THE DEPLOYMENT_
 whereas all other build/deployment is controlled by CDK Pipelines rooted in the Build
 account - the maintenance utility must be run from an AWS environment logged into the deployment
 account (either Dev or Prod).
+
+## Usage
+
+To deploy stack, run `npx cdk deploy` in one of the deploy folders. When deploying for the first time, a migration
+might be required to update the database. This can be done by running `./elsa-data-cmd.sh db-migrate`.

@@ -17,6 +17,11 @@ export interface ElsaDataStackSettings {
   isDevelopment?: boolean;
 
   /**
+   * Forces a new deployment of all stacks by updating the description. Defaults to false.
+   */
+  forceDeployment?: boolean;
+
+  /**
    * The name of a previously installed stack providing us with network/db/storage/cert infrastructure
    * via cloud formation exports.
    */
@@ -69,6 +74,11 @@ export interface ElsaDataStackSettings {
      * the database has been made public via isDevelopment.
      */
     readonly dbUrlPrefix?: string;
+
+    /**
+     * Prefix to use for secrets.
+     */
+    readonly secretPrefix: string;
 
     /**
      * The db URL port - if

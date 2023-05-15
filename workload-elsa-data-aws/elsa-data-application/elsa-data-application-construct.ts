@@ -69,14 +69,20 @@ export class ElsaDataApplicationConstruct extends Construct {
     // added etc)
     let containerImage: ContainerImage;
 
-    if (props.settings.imageFolder) {
+    if (props.settings.buildLocal) {
       // we construct a CDK deployed docker image with any minor alterations
       // we have made to the base image
+      const buildLocal = props.settings.buildLocal;
+
       const asset = new DockerImageAsset(this, "DockerImageAsset", {
-        directory: props.settings.imageFolder,
+        directory: buildLocal.folder,
         platform: Platform.LINUX_AMD64,
         buildArgs: {
-          ELSA_DATA_BASE_IMAGE: props.settings.imageBaseName,
+          ...(buildLocal.version && { ELSA_DATA_VERSION: buildLocal.version }),
+          ...(buildLocal.built && { ELSA_DATA_BUILT: buildLocal.built }),
+          ...(buildLocal.revision && {
+            ELSA_DATA_REVISION: buildLocal.revision,
+          }),
         },
       });
       containerImage = ContainerImage.fromDockerImageAsset(asset);

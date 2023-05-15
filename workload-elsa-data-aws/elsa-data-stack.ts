@@ -21,7 +21,10 @@ export class ElsaDataStack extends Stack {
     id: string,
     props: StackProps & ElsaDataStackSettings
   ) {
-    super(scope, id, props);
+    super(scope, id, {
+      ...props,
+      ...(props.forceDeployment && { description: `${new Date()}` }),
+    });
 
     const vpc = createVpcFromLookup(this, props.infrastructureStackName);
 
@@ -77,9 +80,11 @@ export class ElsaDataStack extends Stack {
      */
     const edgeDb = new EdgeDbConstruct(this, "EdgeDb", {
       isDevelopment: props.isDevelopment,
-      secretsPrefix: "ElsaData", // pragma: allowlist secret
+      secretsPrefix: props.serviceEdgeDb.secretPrefix, // pragma: allowlist secret
       baseNetwork: {
         vpc: vpc,
+        hostedPrefix: props.serviceEdgeDb.dbUrlPrefix ?? "elsa-edge-db",
+        hostedZone: hostedZone,
       },
       edgeDbService: {
         baseSecurityGroup: dbSecurityGroup,
