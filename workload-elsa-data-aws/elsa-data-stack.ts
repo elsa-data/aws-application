@@ -12,6 +12,8 @@ import {
   createNamespaceFromLookup,
   createVpcFromLookup,
 } from "./create-from-lookup";
+import * as apprunner from "@aws-cdk/aws-apprunner-alpha";
+import { ElsaDataApplicationAppRunnerConstruct } from "./elsa-data-application/elsa-data-application-app-runner-construct";
 
 export class ElsaDataStack extends Stack {
   constructor(
@@ -108,6 +110,17 @@ export class ElsaDataStack extends Stack {
     });
 
     new ElsaDataApplicationConstruct(this, "ElsaData", {
+      env: props.env,
+      vpc: vpc,
+      settings: props.serviceElsaData,
+      hostedZoneCertificate: certificate!,
+      hostedZone: hostedZone,
+      cloudMapService: service,
+      edgeDbDsnNoPassword: edgeDb.dsnForEnvironmentVariable,
+      edgeDbPasswordSecret: edgeDb.edgeDbPasswordSecret,
+    });
+
+    new ElsaDataApplicationAppRunnerConstruct(this, "ElsaDataAppRunner", {
       env: props.env,
       vpc: vpc,
       settings: props.serviceElsaData,
