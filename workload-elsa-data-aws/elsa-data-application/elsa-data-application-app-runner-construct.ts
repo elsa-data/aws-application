@@ -54,10 +54,10 @@ export class ElsaDataApplicationAppRunnerConstruct extends Construct {
 
     this.deployedUrl = `https://${props.settings.urlPrefix}.${props.hostedZone.zoneName}`;
 
-    if (!props.settings.imageFolder) return;
+    if (!props.settings.buildLocal) return;
 
     const asset = new DockerImageAsset(this, "DockerImageAsset", {
-      directory: props.settings.imageFolder,
+      directory: props.settings.buildLocal.folder,
       platform: Platform.LINUX_AMD64,
       buildArgs: {
         ELSA_DATA_BASE_IMAGE: props.settings.imageBaseName,

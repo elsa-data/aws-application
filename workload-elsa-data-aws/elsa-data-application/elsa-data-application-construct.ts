@@ -13,7 +13,12 @@ import { DockerServiceWithHttpsLoadBalancerConstruct } from "../construct/docker
 import { Policy, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { ISecret } from "aws-cdk-lib/aws-secretsmanager";
 import { DockerImageCode, DockerImageFunction } from "aws-cdk-lib/aws-lambda";
-import { IVpc, SecurityGroup, SubnetSelection } from "aws-cdk-lib/aws-ec2";
+import {
+  ISecurityGroup,
+  IVpc,
+  SecurityGroup,
+  SubnetSelection,
+} from "aws-cdk-lib/aws-ec2";
 import {
   Cluster,
   ContainerImage,
@@ -25,28 +30,33 @@ import { Service } from "aws-cdk-lib/aws-servicediscovery";
 import { IHostedZone } from "aws-cdk-lib/aws-route53";
 import { ICertificate } from "aws-cdk-lib/aws-certificatemanager";
 import { ElsaDataApplicationStackSettings } from "./elsa-data-application-stack-settings";
+import { IBucket } from "aws-cdk-lib/aws-s3";
 
 interface Props extends StackProps {
-  isDevelopment?: boolean;
-  vpc: ec2.IVpc;
+  readonly isDevelopment?: boolean;
+  readonly vpc: ec2.IVpc;
 
-  hostedZone: IHostedZone;
-  hostedZoneCertificate: ICertificate;
+  readonly hostedZone: IHostedZone;
+  readonly hostedZoneCertificate: ICertificate;
 
-  cloudMapService: Service;
+  readonly cloudMapService: Service;
 
-  /**
-   * The (passwordless) DSN of our EdgeDb instance as passed to us
-   * from the EdgeDb stack.
-   */
-  edgeDbDsnNoPassword: string;
+  // The (passwordless and no database name) DSN of our EdgeDb instance as passed to us
+  readonly edgeDbDsnNoPassword: string;
 
-  /**
-   * The secret holding the password of our EdgeDb instance.
-   */
-  edgeDbPasswordSecret: ISecret;
+  // The secret holding the password of our EdgeDb instance.
+  readonly edgeDbPasswordSecret: ISecret;
 
-  settings: ElsaDataApplicationStackSettings;
+  // the security group of our edgedb - that we will put ourselves in to enable access
+  readonly edgeDbSecurityGroup: ISecurityGroup;
+
+  // the prefix of our infrastructure secrets - so we can set a proper wildcard secret policy
+  readonly secretsPrefix: string;
+
+  // an already created temp bucket we can use
+  readonly tempBucket: IBucket;
+
+  readonly settings: ElsaDataApplicationStackSettings;
 }
 
 // we need a consistent name within the ECS infrastructure for our container
@@ -99,6 +109,7 @@ export class ElsaDataApplicationConstruct extends Construct {
         "PrivateServiceWithLb",
         {
           vpc: props.vpc,
+          securityGroups: [props.edgeDbSecurityGroup],
           hostedPrefix: props.settings.urlPrefix,
           hostedZone: props.hostedZone,
           hostedZoneCertificate: props.hostedZoneCertificate,
@@ -114,7 +125,11 @@ export class ElsaDataApplicationConstruct extends Construct {
           logRetention: RetentionDays.ONE_MONTH,
           healthCheckPath: "/api/health/check",
           environment: {
+            // we have a DSN that has no password or database name
             EDGEDB_DSN: props.edgeDbDsnNoPassword,
+            // we can choose the database name ourselves
+            EDGEDB_DATABASE: "elsadata",
+            // we do no EdgeDb certs (our EdgeDb has made self-signed certs) so we must set this
             EDGEDB_CLIENT_TLS_SECURITY: "insecure",
             ELSA_DATA_META_CONFIG_FOLDERS:
               props.settings.metaConfigFolders || "./config",
@@ -123,7 +138,7 @@ export class ElsaDataApplicationConstruct extends Construct {
             // way we have done the deployment
             ELSA_DATA_CONFIG_DEPLOYED_URL: this.deployedUrl,
             ELSA_DATA_CONFIG_PORT: "80",
-            ELSA_DATA_CONFIG_AWS_TEMP_BUCKET: "tempbucket",
+            ELSA_DATA_CONFIG_AWS_TEMP_BUCKET: props.tempBucket.bucketName,
             // only in development are we likely to be using an image that is not immutable
             // i.e. dev we might use "latest".. but in production we should be using "1.0.1" for example
             //  props.isDevelopment ? "default" : "once",
@@ -146,20 +161,7 @@ export class ElsaDataApplicationConstruct extends Construct {
     const policy = new Policy(this, "FargateServiceTaskPolicy");
 
     // need to be able to fetch secrets - we wildcard to every Secret that has our designated prefix of elsa*
-    policy.addStatements(this.getSecretPolicyStatement());
-
-    // for some of our scaling out work (Beacon etc) - we are going to make Lambdas that we want to be able to invoke
-    // again we wildcard to a designated prefix of elsa-data*
-    policy.addStatements(
-      new PolicyStatement({
-        actions: ["lambda:InvokeFunction"],
-        resources: [
-          `arn:aws:lambda:${Stack.of(this).region}:${
-            Stack.of(this).account
-          }:function:elsa-data-*`,
-        ],
-      })
-    );
+    policy.addStatements(this.getSecretPolicyStatement(props.secretsPrefix));
 
     // restrict our Get operations to a very specific set of keys in the named buckets
     // NOTE: our 'signing' is always done by a different user so this is not the only
@@ -225,6 +227,20 @@ export class ElsaDataApplicationConstruct extends Construct {
       );
     }
 
+    // for some of our scaling out work (Beacon etc) - we are going to make Lambdas that we want to be able to invoke
+    // again we wildcard to a designated prefix of elsa-data*
+    // TODO parameterise this to not have a magic string
+    policy.addStatements(
+      new PolicyStatement({
+        actions: ["lambda:InvokeFunction"],
+        resources: [
+          `arn:aws:lambda:${Stack.of(this).region}:${
+            Stack.of(this).account
+          }:function:elsa-data-*`,
+        ],
+      })
+    );
+
     // for AwsDiscoveryService
     policy.addStatements(
       new PolicyStatement({
@@ -246,7 +262,8 @@ export class ElsaDataApplicationConstruct extends Construct {
       privateServiceWithLoadBalancer.cluster,
       privateServiceWithLoadBalancer.clusterLogGroup,
       privateServiceWithLoadBalancer.service.taskDefinition,
-      [privateServiceWithLoadBalancer.clusterSecurityGroup]
+      [privateServiceWithLoadBalancer.clusterSecurityGroup],
+      props.secretsPrefix
     );
 
     // we register it into the cloudmap service so outside tools can locate it
@@ -267,13 +284,13 @@ export class ElsaDataApplicationConstruct extends Construct {
    *
    * @private
    */
-  private getSecretPolicyStatement(): PolicyStatement {
+  private getSecretPolicyStatement(secretsPrefix: string): PolicyStatement {
     return new PolicyStatement({
       actions: ["secretsmanager:GetSecretValue"],
       resources: [
         `arn:aws:secretsmanager:${Stack.of(this).region}:${
           Stack.of(this).account
-        }:secret:ElsaData*`,
+        }:secret:${secretsPrefix}*`,
       ],
     });
   }
@@ -288,6 +305,7 @@ export class ElsaDataApplicationConstruct extends Construct {
    * @param clusterLogGroup
    * @param taskDefinition
    * @param taskSecurityGroups
+   * @param secretsPrefix
    * @private
    */
   private addCommandLambda(
@@ -296,7 +314,8 @@ export class ElsaDataApplicationConstruct extends Construct {
     cluster: Cluster,
     clusterLogGroup: LogGroup,
     taskDefinition: TaskDefinition,
-    taskSecurityGroups: SecurityGroup[]
+    taskSecurityGroups: SecurityGroup[],
+    secretsPrefix: string
   ): DockerImageFunction {
     /*const commandLambdaSecurityGroup = new SecurityGroup(
       this,
@@ -345,7 +364,7 @@ export class ElsaDataApplicationConstruct extends Construct {
       new Policy(this, "CommandTasksPolicy", {
         statements: [
           // need to be able to fetch secrets - we wildcard to everything with our designated prefix
-          this.getSecretPolicyStatement(),
+          this.getSecretPolicyStatement(secretsPrefix),
           // restricted to running our task only on our cluster
           new PolicyStatement({
             actions: ["ecs:RunTask"],

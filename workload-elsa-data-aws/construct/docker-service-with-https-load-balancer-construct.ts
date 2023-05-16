@@ -3,6 +3,7 @@ import { IHostedZone } from "aws-cdk-lib/aws-route53";
 import { ICertificate } from "aws-cdk-lib/aws-certificatemanager";
 import { SslPolicy } from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import {
+  ISecurityGroup,
   IVpc,
   SecurityGroup,
   SubnetSelection,
@@ -24,6 +25,9 @@ import { Duration } from "aws-cdk-lib";
 type Props = {
   // the VPC to place the cluster in
   vpc: IVpc;
+
+  // any security groups to place the cluster in - alongside a security group we will ourselves construct
+  securityGroups: ISecurityGroup[];
 
   // the details of the domain name entry to construct as the ALB entrypoint
   hostedPrefix: string;
@@ -128,7 +132,7 @@ export class DockerServiceWithHttpsLoadBalancerConstruct extends Construct {
       publicLoadBalancer: true,
       taskDefinition: taskDefinition,
       taskSubnets: this.clusterSubnetSelection,
-      securityGroups: [this.clusterSecurityGroup],
+      securityGroups: [this.clusterSecurityGroup, ...props.securityGroups],
       circuitBreaker: {
         rollback: true,
       },

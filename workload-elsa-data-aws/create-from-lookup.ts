@@ -42,16 +42,17 @@ export function createVpcFromLookup(
   });
 }
 
-export function createDatabaseSecurityGroupFromLookup(
+export function createEdgeDbSecurityGroupFromLookup(
   stack: Stack,
-  infrastructureStackId: string
+  infrastructureStackId: string,
+  databaseName: string
 ) {
   return SecurityGroup.fromSecurityGroupId(
     stack,
-    "DatabaseSecurityGroup",
+    "EdgeDbSecurityGroup",
     StringParameter.valueFromLookup(
       stack,
-      `/${infrastructureStackId}/Database/securityGroupId`
+      `/${infrastructureStackId}/Database/${databaseName}/EdgeDb/securityGroupId`
     ),
     {}
   );

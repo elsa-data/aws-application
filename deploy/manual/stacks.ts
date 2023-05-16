@@ -31,11 +31,12 @@ new ElsaDataStack(app, "ElsaDataLocalDevTestStack", {
   tags: tags,
   isDevelopment: true,
   infrastructureStackName: "ElsaDataLocalDevTestInfrastructureStack",
+  infrastructureDatabaseName: "elsa_data_serverless_database",
   serviceRegistration: {
     cloudMapServiceName: "Application",
   },
   serviceElsaData: {
-    urlPrefix: "elsa",
+    urlPrefix: "elsa-data",
     imageBaseName: `ghcr.io/umccr/elsa-data:${LOCAL_DEV_TEST_DEPLOYED_IMAGE_TAG}`,
     metaConfigSources:
       "file('base') file('umccr-garvan-dev-super-admins') file('dev-deployed') file('datasets') aws-secret('ElsaDataDevDeployed')",
@@ -50,17 +51,6 @@ new ElsaDataStack(app, "ElsaDataLocalDevTestStack", {
     memoryLimitMiB: 1024,
     cpu: 512,
   },
-  serviceEdgeDb: {
-    version: "2.13",
-    memoryLimitMiB: 2048,
-    cpu: 512,
-    // the URL prefix of the database UI (which is exposed due to isDevelopment=true)
-    keySecretName: "elsa/tls/key", // pragma: allowlist secret
-    certSecretName: "elsa/tls/cert", // pragma: allowlist secret
-    dbUrlPrefix: "elsa-edge-db",
-    dbUrlPort: 4000,
-    dbUiUrlPort: 4001,
-  },
 });
 
 new ElsaDataStack(app, "ElsaDataDemoAustralianGenomicsStack", {
@@ -74,16 +64,19 @@ new ElsaDataStack(app, "ElsaDataDemoAustralianGenomicsStack", {
   },
   isDevelopment: false,
   infrastructureStackName: "ElsaDataDemoAustralianGenomicsInfrastructureStack",
+  infrastructureDatabaseName: "elsa_data_serverless_database",
   serviceElsaData: {
-    urlPrefix: "elsa-demo",
-    imageFolder: join(
-      __dirname,
-      "..",
-      "..",
-      "artifacts",
-      "elsa-data-application-deployment-ag-demo-docker-image"
-    ),
+    urlPrefix: "elsa-data-demo",
     imageBaseName: `ghcr.io/umccr/elsa-data:${AG_DEMO_DEPLOYED_IMAGE_TAG}`,
+    buildLocal: {
+      folder: join(
+        __dirname,
+        "..",
+        "..",
+        "artifacts",
+        "elsa-data-application-deployment-ag-demo-docker-image"
+      ),
+    },
     memoryLimitMiB: 2048,
     cpu: 1024,
     awsPermissions: {
@@ -95,12 +88,7 @@ new ElsaDataStack(app, "ElsaDataDemoAustralianGenomicsStack", {
       enableAccessPoints: true,
     },
     metaConfigSources:
-      "file('base') file('admins') file('datasets') file('dacs') aws-secret('ElsaDataDemo')",
+      "file('base') file('admins') file('datasets') file('dacs') aws-secret('ElsaDataDemoConfiguration')",
     metaConfigFolders: "/ag-config",
-  },
-  serviceEdgeDb: {
-    version: "2.13",
-    memoryLimitMiB: 2048,
-    cpu: 1024,
   },
 });

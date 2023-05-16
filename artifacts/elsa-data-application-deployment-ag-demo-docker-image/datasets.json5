@@ -1,9 +1,10 @@
 {
   datasets: [
     {
+      uri: "urn:fdc:australiangenomics.org.au:2022:dataset/demonstration/a",
       name: "Flagship A",
       description: "The Australian Genomics demonstration flagship A",
-      uri: "urn:fdc:australiangenomics.org.au:2022:dataset/demonstration/a",
+      loader: "australian-genomics-directories",
       storageLocation: "aws-s3",
       storageUriPrefix: "s3://elsa-test-data/FLAGSHIP_A",
       aws: {
@@ -12,9 +13,10 @@
       },
     },
     {
+      uri: "urn:fdc:australiangenomics.org.au:2022:dataset/demonstration/b",
       name: "Flagship B",
       description: "The Australian Genomics demonstration flagship B",
-      uri: "urn:fdc:australiangenomics.org.au:2022:dataset/demonstration/b",
+      loader: "australian-genomics-directories",
       storageLocation: "aws-s3",
       storageUriPrefix: "s3://elsa-test-data/FLAGSHIP_B",
       aws: {

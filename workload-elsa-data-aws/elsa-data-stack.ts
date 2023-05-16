@@ -1,19 +1,17 @@
-import { aws_ecs as ecs, Stack, StackProps } from "aws-cdk-lib";
+import { Stack, StackProps } from "aws-cdk-lib";
 import { Construct } from "constructs";
-import { EdgeDbConstruct } from "./edge-db/edge-db-stack";
 import { ElsaDataApplicationConstruct } from "./elsa-data-application/elsa-data-application-construct";
-import { Secret } from "aws-cdk-lib/aws-secretsmanager";
 import { Service } from "aws-cdk-lib/aws-servicediscovery";
 import { ElsaDataStackSettings } from "./elsa-data-stack-settings";
-import { StringParameter } from "aws-cdk-lib/aws-ssm";
 import {
-  createDatabaseSecurityGroupFromLookup,
   createDnsFromLookup,
+  createEdgeDbSecurityGroupFromLookup,
   createNamespaceFromLookup,
   createVpcFromLookup,
 } from "./create-from-lookup";
-import * as apprunner from "@aws-cdk/aws-apprunner-alpha";
-import { ElsaDataApplicationAppRunnerConstruct } from "./elsa-data-application/elsa-data-application-app-runner-construct";
+import { StringParameter } from "aws-cdk-lib/aws-ssm";
+import { Secret } from "aws-cdk-lib/aws-secretsmanager";
+import { Bucket } from "aws-cdk-lib/aws-s3";
 
 export class ElsaDataStack extends Stack {
   constructor(
@@ -38,81 +36,48 @@ export class ElsaDataStack extends Stack {
       props.infrastructureStackName
     );
 
-    const dbSecurityGroup = createDatabaseSecurityGroupFromLookup(
-      this,
-      props.infrastructureStackName
-    );
-
-    let elsaEdgeDbCert: ecs.Secret | undefined = undefined;
-    let elsaEdgeDbKey: ecs.Secret | undefined = undefined;
-
-    if (
-      props.serviceEdgeDb.certSecretName &&
-      props.serviceEdgeDb.keySecretName
-    ) {
-      const edgeDbKey = Secret.fromSecretNameV2(
-        this,
-        "KeySecret",
-        props.serviceEdgeDb.keySecretName
-      );
-      const edgeDbCert = Secret.fromSecretNameV2(
-        this,
-        "CertSecret",
-        props.serviceEdgeDb.certSecretName
-      );
-
-      // TODO: clean this up - ideally we would have all the certs in the master Elsa settings secrets
-      // const elsaSecret = Secret.fromSecretNameV2(this, "ElsaSecret", "Elsa");
-      // https://github.com/aws/containers-roadmap/issues/385
-      // ecs.Secret.fromSecretsManager(elsaSecret, "edgeDb.tlsKey");
-      elsaEdgeDbCert = ecs.Secret.fromSecretsManager(edgeDbCert);
-      elsaEdgeDbKey = ecs.Secret.fromSecretsManager(edgeDbKey);
-    }
-
+    // register a service for the Application in our namespace
     const service = new Service(this, "Service", {
       namespace: namespace,
       name: props.serviceRegistration.cloudMapServiceName,
       description: "Service for registering Elsa Data components",
     });
 
-    /**
-     * Create EdgeDb server
-     */
-    const edgeDb = new EdgeDbConstruct(this, "EdgeDb", {
-      isDevelopment: props.isDevelopment,
-      secretsPrefix: props.serviceEdgeDb.secretPrefix, // pragma: allowlist secret
-      baseNetwork: {
-        vpc: vpc,
-        hostedPrefix: props.serviceEdgeDb.dbUrlPrefix ?? "elsa-edge-db",
-        hostedZone: hostedZone,
-      },
-      edgeDbService: {
-        baseSecurityGroup: dbSecurityGroup,
-        baseDsn: StringParameter.valueFromLookup(
-          this,
-          `/${props.infrastructureStackName}/Database/dsnWithPassword`
-        ),
-        superUser: "elsa_superuser",
-        desiredCount: 1,
-        cpu: props.serviceEdgeDb.cpu,
-        memory: props.serviceEdgeDb.memoryLimitMiB,
-        cert: elsaEdgeDbCert,
-        key: elsaEdgeDbKey,
-        version: props.serviceEdgeDb.version,
-      },
-      edgeDbLoadBalancer: {
-        port: props.serviceEdgeDb.dbUrlPort || 4000,
-        // only attempt to switch on the UI for development
-        ui: props.isDevelopment
-          ? {
-              port: props.serviceEdgeDb.dbUiUrlPort || 4001,
-              certificate: certificate,
-              hostedPrefix: "elsa-edge-db",
-              hostedZone: hostedZone,
-            }
-          : undefined,
-      },
-    });
+    const edgeDbSecurityGroup = createEdgeDbSecurityGroupFromLookup(
+      this,
+      props.infrastructureStackName,
+      "edge"
+    );
+
+    const edgeDbDnsNoPassword = StringParameter.valueFromLookup(
+      this,
+      `/${props.infrastructureStackName}/Database/${props.infrastructureDatabaseName}/EdgeDb/dsnNoPasswordOrDatabase`
+    );
+
+    const edgeDbAdminPasswordSecretArn = StringParameter.valueFromLookup(
+      this,
+      `/${props.infrastructureStackName}/Database/${props.infrastructureDatabaseName}/EdgeDb/adminPasswordSecretArn`
+    );
+
+    const edgeDbAdminPasswordSecret = Secret.fromSecretCompleteArn(
+      this,
+      "AdminSecret",
+      edgeDbAdminPasswordSecretArn
+    );
+
+    const secretsPrefix = StringParameter.valueFromLookup(
+      this,
+      `/${props.infrastructureStackName}/SecretsManager/secretsPrefix`
+    );
+
+    const tempBucket = Bucket.fromBucketArn(
+      this,
+      "TempBucket",
+      StringParameter.valueFromLookup(
+        this,
+        `/${props.infrastructureStackName}/TempPrivateBucket/bucketArn`
+      )
+    );
 
     new ElsaDataApplicationConstruct(this, "ElsaData", {
       env: props.env,
@@ -121,11 +86,17 @@ export class ElsaDataStack extends Stack {
       hostedZoneCertificate: certificate!,
       hostedZone: hostedZone,
       cloudMapService: service,
-      edgeDbDsnNoPassword: edgeDb.dsnForEnvironmentVariable,
-      edgeDbPasswordSecret: edgeDb.edgeDbPasswordSecret,
+      edgeDbDsnNoPassword: edgeDbDnsNoPassword,
+      edgeDbPasswordSecret: edgeDbAdminPasswordSecret,
+      edgeDbSecurityGroup: edgeDbSecurityGroup,
+      secretsPrefix: secretsPrefix,
+      tempBucket: tempBucket,
     });
 
-    new ElsaDataApplicationAppRunnerConstruct(this, "ElsaDataAppRunner", {
+    /*
+      DISABLED - WAITING ON A CDK CONSTRUCT FOR SETTING CNAME OF APPRUNNER
+      THEN WE REALLY SHOULD CONSIDER
+      new ElsaDataApplicationAppRunnerConstruct(this, "ElsaDataAppRunner", {
       env: props.env,
       vpc: vpc,
       settings: props.serviceElsaData,
@@ -134,6 +105,6 @@ export class ElsaDataStack extends Stack {
       cloudMapService: service,
       edgeDbDsnNoPassword: edgeDb.dsnForEnvironmentVariable,
       edgeDbPasswordSecret: edgeDb.edgeDbPasswordSecret,
-    });
+    });*/
   }
 }
