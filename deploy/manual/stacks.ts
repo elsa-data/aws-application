@@ -29,7 +29,6 @@ new ElsaDataStack(app, "ElsaDataLocalDevTestStack", {
     region: "ap-southeast-2",
   },
   tags: tags,
-  isDevelopment: true,
   infrastructureStackName: "ElsaDataLocalDevTestInfrastructureStack",
   infrastructureDatabaseName: "elsa_data_serverless_database",
   serviceElsaData: {
@@ -56,7 +55,6 @@ new ElsaDataStack(app, "ElsaDataDemoAustralianGenomicsStack", {
     region: "ap-southeast-2",
   },
   tags: tags,
-  isDevelopment: false,
   infrastructureStackName: "ElsaDataDemoAustralianGenomicsInfrastructureStack",
   infrastructureDatabaseName: "elsa_data_serverless_database",
   serviceElsaData: {

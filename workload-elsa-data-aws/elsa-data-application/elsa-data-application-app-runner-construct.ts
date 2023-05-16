@@ -21,7 +21,6 @@ import { ElsaDataApplicationStackSettings } from "./elsa-data-application-stack-
 import * as apprunner from "@aws-cdk/aws-apprunner-alpha";
 
 interface Props extends StackProps {
-  isDevelopment?: boolean;
   vpc: ec2.IVpc;
 
   hostedZone: IHostedZone;

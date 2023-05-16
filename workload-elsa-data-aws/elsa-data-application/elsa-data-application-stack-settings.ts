@@ -70,4 +70,7 @@ export type ElsaDataApplicationStackSettings = {
 
   // if present, an alternative service name for the application - defaults to Application
   readonly serviceName?: string;
+
+  // if present, an alternative edgedb database name for the application - defaults to something sensible
+  readonly databaseName?: string;
 };

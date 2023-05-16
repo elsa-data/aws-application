@@ -33,7 +33,6 @@ import { ElsaDataApplicationStackSettings } from "./elsa-data-application-stack-
 import { IBucket } from "aws-cdk-lib/aws-s3";
 
 interface Props extends StackProps {
-  readonly isDevelopment?: boolean;
   readonly vpc: ec2.IVpc;
 
   readonly hostedZone: IHostedZone;
@@ -87,10 +86,11 @@ export class ElsaDataApplicationConstruct extends Construct {
       const asset = new DockerImageAsset(this, "DockerImageAsset", {
         directory: buildLocal.folder,
         platform: Platform.LINUX_AMD64,
+        extraHash: props.settings.imageBaseName,
         buildArgs: {
           // pass this through to Docker so it can be used as a BASE if wanted
           ELSA_DATA_BASE_IMAGE: props.settings.imageBaseName,
-          // bring in custom Docker build values for Elsa to read
+          // bring in custom Docker build values for Elsa to use if present
           ...(buildLocal.version && { ELSA_DATA_VERSION: buildLocal.version }),
           ...(buildLocal.built && { ELSA_DATA_BUILT: buildLocal.built }),
           ...(buildLocal.revision && {
@@ -131,8 +131,8 @@ export class ElsaDataApplicationConstruct extends Construct {
           environment: {
             // we have a DSN that has no password or database name
             EDGEDB_DSN: props.edgeDbDsnNoPassword,
-            // we can choose the database name ourselves
-            EDGEDB_DATABASE: "elsadata",
+            // we can choose the database name ourselves or default
+            EDGEDB_DATABASE: props.settings.databaseName ?? "elsadata",
             // we do no EdgeDb certs (our EdgeDb has made self-signed certs) so we must set this
             EDGEDB_CLIENT_TLS_SECURITY: "insecure",
             ELSA_DATA_META_CONFIG_FOLDERS:
@@ -143,7 +143,7 @@ export class ElsaDataApplicationConstruct extends Construct {
             ELSA_DATA_CONFIG_DEPLOYED_URL: this.deployedUrl,
             ELSA_DATA_CONFIG_PORT: "80",
             ELSA_DATA_CONFIG_AWS_TEMP_BUCKET: props.tempBucket.bucketName,
-            ELSA_DATA_AWS_SERVICE_DISCOVERY_NAMESPACE:
+            ELSA_DATA_CONFIG_SERVICE_DISCOVERY_NAMESPACE:
               props.cloudMapNamespace.namespaceName,
             // only in development are we likely to be using an image that is not immutable
             // i.e. dev we might use "latest".. but in production we should be using "1.0.1" for example

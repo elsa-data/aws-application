@@ -2,12 +2,6 @@ import { ElsaDataApplicationStackSettings } from "./elsa-data-application/elsa-d
 
 export interface ElsaDataStackSettings {
   /**
-   * Changes the behaviour of most resources (databases etc) to be publicly
-   * accessible (albeit secure/password protected)
-   */
-  readonly isDevelopment?: boolean;
-
-  /**
    * Forces a new deployment of all stacks by updating the description. Defaults to false.
    */
   readonly forceDeployment?: boolean;
