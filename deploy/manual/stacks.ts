@@ -82,5 +82,10 @@ new ElsaDataStack(app, "ElsaDataDemoAustralianGenomicsStack", {
     metaConfigSources:
       "file('base') file('admins') file('datasets') file('dacs') aws-secret('ElsaDataDemoConfiguration')",
     metaConfigFolders: "/ag-config",
+    // this demo instance we like to be able to rotate through various databases (and easily make new ones)
+    // - create new databases in the EdgeDb UI
+    // - then do a CDK update with the new name here
+    // - then do a db-migrate
+    databaseName: "elsadata2",
   },
 });
