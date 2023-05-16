@@ -1,5 +1,4 @@
 import { ElsaDataApplicationStackSettings } from "./elsa-data-application/elsa-data-application-stack-settings";
-import { ISecret } from "aws-cdk-lib/aws-secretsmanager";
 
 export interface ElsaDataStackSettings {
   /**
@@ -25,17 +24,6 @@ export interface ElsaDataStackSettings {
    * the output SSM of the infrastructure stack to see what databases are exported.
    */
   readonly infrastructureDatabaseName: string;
-
-  /**
-   * The details of where we will register the services provided by this stack.
-   */
-  readonly serviceRegistration: {
-    /**
-     * The service name for registering in cloudmap (can be used to distinguish between multiple Elsa Data
-     * in the same namespace). Would normally be "elsa-data".
-     */
-    readonly cloudMapServiceName: string;
-  };
 
   serviceElsaData: ElsaDataApplicationStackSettings;
 }

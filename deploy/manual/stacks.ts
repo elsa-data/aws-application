@@ -21,7 +21,7 @@ const description =
 const LOCAL_DEV_TEST_DEPLOYED_IMAGE_TAG = "dev";
 
 // should be a 'released' image tag that has already been tested in dev
-const AG_DEMO_DEPLOYED_IMAGE_TAG = "0.1.4";
+const AG_DEMO_DEPLOYED_IMAGE_TAG = "pr-332";
 
 new ElsaDataStack(app, "ElsaDataLocalDevTestStack", {
   env: {
@@ -32,9 +32,6 @@ new ElsaDataStack(app, "ElsaDataLocalDevTestStack", {
   isDevelopment: true,
   infrastructureStackName: "ElsaDataLocalDevTestInfrastructureStack",
   infrastructureDatabaseName: "elsa_data_serverless_database",
-  serviceRegistration: {
-    cloudMapServiceName: "Application",
-  },
   serviceElsaData: {
     urlPrefix: "elsa-data",
     imageBaseName: `ghcr.io/umccr/elsa-data:${LOCAL_DEV_TEST_DEPLOYED_IMAGE_TAG}`,
@@ -59,9 +56,6 @@ new ElsaDataStack(app, "ElsaDataDemoAustralianGenomicsStack", {
     region: "ap-southeast-2",
   },
   tags: tags,
-  serviceRegistration: {
-    cloudMapServiceName: "Application",
-  },
   isDevelopment: false,
   infrastructureStackName: "ElsaDataDemoAustralianGenomicsInfrastructureStack",
   infrastructureDatabaseName: "elsa_data_serverless_database",

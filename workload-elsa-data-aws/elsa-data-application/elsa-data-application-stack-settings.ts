@@ -62,13 +62,12 @@ export type ElsaDataApplicationStackSettings = {
     readonly enableAccessPoints: boolean;
   };
 
-  /**
-   * The memory assigned to the Elsa Data service
-   */
+  // The memory assigned to the Elsa Data service
   readonly memoryLimitMiB: number;
 
-  /**
-   * The cpu assigned to the Elsa Data service
-   */
+  // The cpu assigned to the Elsa Data service
   readonly cpu: number;
+
+  // if present, an alternative service name for the application - defaults to Application
+  readonly serviceName?: string;
 };

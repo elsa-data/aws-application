@@ -26,7 +26,7 @@ import {
   TaskDefinition,
 } from "aws-cdk-lib/aws-ecs";
 import { LogGroup, RetentionDays } from "aws-cdk-lib/aws-logs";
-import { Service } from "aws-cdk-lib/aws-servicediscovery";
+import { IHttpNamespace, Service } from "aws-cdk-lib/aws-servicediscovery";
 import { IHostedZone } from "aws-cdk-lib/aws-route53";
 import { ICertificate } from "aws-cdk-lib/aws-certificatemanager";
 import { ElsaDataApplicationStackSettings } from "./elsa-data-application-stack-settings";
@@ -39,7 +39,7 @@ interface Props extends StackProps {
   readonly hostedZone: IHostedZone;
   readonly hostedZoneCertificate: ICertificate;
 
-  readonly cloudMapService: Service;
+  readonly cloudMapNamespace: IHttpNamespace;
 
   // The (passwordless and no database name) DSN of our EdgeDb instance as passed to us
   readonly edgeDbDsnNoPassword: string;
@@ -88,6 +88,9 @@ export class ElsaDataApplicationConstruct extends Construct {
         directory: buildLocal.folder,
         platform: Platform.LINUX_AMD64,
         buildArgs: {
+          // pass this through to Docker so it can be used as a BASE if wanted
+          ELSA_DATA_BASE_IMAGE: props.settings.imageBaseName,
+          // bring in custom Docker build values for Elsa to read
           ...(buildLocal.version && { ELSA_DATA_VERSION: buildLocal.version }),
           ...(buildLocal.built && { ELSA_DATA_BUILT: buildLocal.built }),
           ...(buildLocal.revision && {
@@ -109,6 +112,7 @@ export class ElsaDataApplicationConstruct extends Construct {
         "PrivateServiceWithLb",
         {
           vpc: props.vpc,
+          // we need to at least be placed in the EdgeDb security group so that in production we can access EdgeDb
           securityGroups: [props.edgeDbSecurityGroup],
           hostedPrefix: props.settings.urlPrefix,
           hostedZone: props.hostedZone,
@@ -139,6 +143,8 @@ export class ElsaDataApplicationConstruct extends Construct {
             ELSA_DATA_CONFIG_DEPLOYED_URL: this.deployedUrl,
             ELSA_DATA_CONFIG_PORT: "80",
             ELSA_DATA_CONFIG_AWS_TEMP_BUCKET: props.tempBucket.bucketName,
+            ELSA_DATA_AWS_SERVICE_DISCOVERY_NAMESPACE:
+              props.cloudMapNamespace.namespaceName,
             // only in development are we likely to be using an image that is not immutable
             // i.e. dev we might use "latest".. but in production we should be using "1.0.1" for example
             //  props.isDevelopment ? "default" : "once",
@@ -152,11 +158,6 @@ export class ElsaDataApplicationConstruct extends Construct {
           },
         }
       );
-
-    // 👇 grant access to bucket
-    //tempBucket.grantReadWrite(
-    //  privateServiceWithLoadBalancer.service.taskDefinition.taskRole
-    //);
 
     const policy = new Policy(this, "FargateServiceTaskPolicy");
 
@@ -241,7 +242,7 @@ export class ElsaDataApplicationConstruct extends Construct {
       })
     );
 
-    // for AwsDiscoveryService
+    // allow discovery
     policy.addStatements(
       new PolicyStatement({
         actions: ["servicediscovery:DiscoverInstances"],
@@ -252,6 +253,11 @@ export class ElsaDataApplicationConstruct extends Construct {
     // the permissions of the running container (i.e all AWS functionality used by Elsa Data code)
     privateServiceWithLoadBalancer.service.taskDefinition.taskRole.attachInlinePolicy(
       policy
+    );
+
+    // 👇 grant access to bucket
+    props.tempBucket.grantReadWrite(
+      privateServiceWithLoadBalancer.service.taskDefinition.taskRole
     );
 
     // the command function is an invocable lambda that will then go and spin up an ad-hoc Task in our
@@ -266,8 +272,16 @@ export class ElsaDataApplicationConstruct extends Construct {
       props.secretsPrefix
     );
 
+    // register a service for the Application in our namespace
+    // chose a sensible default - but allow an alteration in case I guess someone might
+    // want to run two Elsa *in the same infrastructure*
+    const service = new Service(this, "Service", {
+      namespace: props.cloudMapNamespace,
+      name: props.settings.serviceName ?? "Application",
+    });
+
     // we register it into the cloudmap service so outside tools can locate it
-    props.cloudMapService.registerNonIpInstance("CommandLambda", {
+    service.registerNonIpInstance("CommandLambda", {
       customAttributes: {
         lambdaArn: commandFunction.functionArn,
       },
