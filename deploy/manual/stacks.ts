@@ -20,7 +20,7 @@ const descriptionWithTag = (tag: string) =>
 const LOCAL_DEV_TEST_DEPLOYED_IMAGE_TAG = "dev";
 
 // should be a 'released' image tag that has already been tested in dev
-const AG_DEMO_DEPLOYED_IMAGE_TAG = "dev";
+const AG_DEMO_DEPLOYED_IMAGE_TAG = "0.1.5";
 
 /**
  * Stack for local dev/test
