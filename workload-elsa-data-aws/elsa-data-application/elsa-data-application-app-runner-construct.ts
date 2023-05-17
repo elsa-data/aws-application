@@ -17,8 +17,14 @@ import { ISecret } from "aws-cdk-lib/aws-secretsmanager";
 import { Service } from "aws-cdk-lib/aws-servicediscovery";
 import { IHostedZone } from "aws-cdk-lib/aws-route53";
 import { ICertificate } from "aws-cdk-lib/aws-certificatemanager";
-import { ElsaDataApplicationStackSettings } from "./elsa-data-application-stack-settings";
+import { ElsaDataApplicationSettings } from "./elsa-data-application-settings";
 import * as apprunner from "@aws-cdk/aws-apprunner-alpha";
+
+//
+// WIP warning
+// was used to test the concept
+// waiting on a CDK construct for settings the deployed URL and then we should revisit
+//
 
 interface Props extends StackProps {
   vpc: ec2.IVpc;
@@ -39,7 +45,7 @@ interface Props extends StackProps {
    */
   edgeDbPasswordSecret: ISecret;
 
-  settings: ElsaDataApplicationStackSettings;
+  settings: ElsaDataApplicationSettings;
 }
 
 /**

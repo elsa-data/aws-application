@@ -4,7 +4,6 @@ import {
   CfnOutput,
   Duration,
   Stack,
-  StackProps,
 } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import * as path from "path";
@@ -29,10 +28,10 @@ import { LogGroup, RetentionDays } from "aws-cdk-lib/aws-logs";
 import { IHttpNamespace, Service } from "aws-cdk-lib/aws-servicediscovery";
 import { IHostedZone } from "aws-cdk-lib/aws-route53";
 import { ICertificate } from "aws-cdk-lib/aws-certificatemanager";
-import { ElsaDataApplicationStackSettings } from "./elsa-data-application-stack-settings";
+import { ElsaDataApplicationSettings } from "./elsa-data-application-settings";
 import { IBucket } from "aws-cdk-lib/aws-s3";
 
-interface Props extends StackProps {
+type Props = ElsaDataApplicationSettings & {
   readonly vpc: ec2.IVpc;
 
   readonly hostedZone: IHostedZone;
@@ -54,9 +53,7 @@ interface Props extends StackProps {
 
   // an already created temp bucket we can use
   readonly tempBucket: IBucket;
-
-  readonly settings: ElsaDataApplicationStackSettings;
-}
+};
 
 // we need a consistent name within the ECS infrastructure for our container
 // there seems to be no reason why this would need to be configurable though, hence this constant
@@ -71,25 +68,27 @@ export class ElsaDataApplicationConstruct extends Construct {
   constructor(scope: Construct, id: string, props: Props) {
     super(scope, id);
 
-    this.deployedUrl = `https://${props.settings.urlPrefix}.${props.hostedZone.zoneName}`;
+    this.deployedUrl = `https://${props.urlPrefix}.${props.hostedZone.zoneName}`;
 
     // we allow our Elsa image to either be the straight Elsa image from the public repo
     // OR we will build a local Dockerfile to allow local changes to be made (config files
     // added etc)
     let containerImage: ContainerImage;
 
-    if (props.settings.buildLocal) {
+    if (props.buildLocal) {
       // we construct a CDK deployed docker image with any minor alterations
       // we have made to the base image
-      const buildLocal = props.settings.buildLocal;
+      const buildLocal = props.buildLocal;
 
       const asset = new DockerImageAsset(this, "DockerImageAsset", {
         directory: buildLocal.folder,
         platform: Platform.LINUX_AMD64,
-        extraHash: props.settings.imageBaseName,
+        // because the image base name is passed into Docker - the actual Docker checksum
+        // itself won't change even when the image base does... so we need to add it into the hash
+        extraHash: props.imageBaseName,
         buildArgs: {
           // pass this through to Docker so it can be used as a BASE if wanted
-          ELSA_DATA_BASE_IMAGE: props.settings.imageBaseName,
+          ELSA_DATA_BASE_IMAGE: props.imageBaseName,
           // bring in custom Docker build values for Elsa to use if present
           ...(buildLocal.version && { ELSA_DATA_VERSION: buildLocal.version }),
           ...(buildLocal.built && { ELSA_DATA_BUILT: buildLocal.built }),
@@ -100,10 +99,7 @@ export class ElsaDataApplicationConstruct extends Construct {
       });
       containerImage = ContainerImage.fromDockerImageAsset(asset);
     } else {
-      containerImage = ContainerImage.fromRegistry(
-        props.settings.imageBaseName,
-        {}
-      );
+      containerImage = ContainerImage.fromRegistry(props.imageBaseName, {});
     }
 
     const privateServiceWithLoadBalancer =
@@ -114,17 +110,17 @@ export class ElsaDataApplicationConstruct extends Construct {
           vpc: props.vpc,
           // we need to at least be placed in the EdgeDb security group so that in production we can access EdgeDb
           securityGroups: [props.edgeDbSecurityGroup],
-          hostedPrefix: props.settings.urlPrefix,
+          hostedPrefix: props.urlPrefix,
           hostedZone: props.hostedZone,
           hostedZoneCertificate: props.hostedZoneCertificate,
           containerImage: containerImage,
-          // rather than have these be settable as props - we should do some study to work out
-          // optimal values of these ourselves
-          memoryLimitMiB: props.settings.memoryLimitMiB,
-          cpu: props.settings.cpu,
+          memoryLimitMiB: props.memoryLimitMiB ?? 2048,
+          cpu: props.cpu ?? 1024,
+          desiredCount: props.desiredCount ?? 1,
           cpuArchitecture: CpuArchitecture.X86_64,
-          desiredCount: 1,
           containerName: FIXED_CONTAINER_NAME,
+          // NOTE there is a dependence here from the CommandLambda which uses the prefix to extract log messages
+          // TODO pass this into the command lambda setup (also FIXED_CONTAINER_NAME)
           logStreamPrefix: "elsa",
           logRetention: RetentionDays.ONE_MONTH,
           healthCheckPath: "/api/health/check",
@@ -132,12 +128,13 @@ export class ElsaDataApplicationConstruct extends Construct {
             // we have a DSN that has no password or database name
             EDGEDB_DSN: props.edgeDbDsnNoPassword,
             // we can choose the database name ourselves or default
-            EDGEDB_DATABASE: props.settings.databaseName ?? "elsadata",
-            // we do no EdgeDb certs (our EdgeDb has made self-signed certs) so we must set this
+            EDGEDB_DATABASE: props.databaseName ?? "elsadata",
+            // we don't do EdgeDb certs (our EdgeDb has made self-signed certs) so we must set this
             EDGEDB_CLIENT_TLS_SECURITY: "insecure",
+            // environment variables set to setup the meta system for Elsa configuration
             ELSA_DATA_META_CONFIG_FOLDERS:
-              props.settings.metaConfigFolders || "./config",
-            ELSA_DATA_META_CONFIG_SOURCES: props.settings.metaConfigSources,
+              props.metaConfigFolders || "./config",
+            ELSA_DATA_META_CONFIG_SOURCES: props.metaConfigSources,
             // override any config settings that we know definitively here because of the
             // way we have done the deployment
             ELSA_DATA_CONFIG_DEPLOYED_URL: this.deployedUrl,
@@ -168,7 +165,7 @@ export class ElsaDataApplicationConstruct extends Construct {
     // NOTE: our 'signing' is always done by a different user so this is not the only
     // permission that has to be set correctly
     for (const [bucketName, keyWildcards] of Object.entries(
-      props.settings.awsPermissions.dataBucketPaths
+      props.awsPermissions.dataBucketPaths
     )) {
       policy.addStatements(
         new PolicyStatement({
@@ -183,13 +180,13 @@ export class ElsaDataApplicationConstruct extends Construct {
     policy.addStatements(
       new PolicyStatement({
         actions: ["s3:ListBucket"],
-        resources: Object.keys(
-          props.settings.awsPermissions.dataBucketPaths
-        ).map((b) => `arn:aws:s3:::${b}`),
+        resources: Object.keys(props.awsPermissions.dataBucketPaths).map(
+          (b) => `arn:aws:s3:::${b}`
+        ),
       })
     );
 
-    if (props.settings.awsPermissions.enableAccessPoints) {
+    if (props.awsPermissions.enableAccessPoints) {
       policy.addStatements(
         // temporarily give all S3 accesspoint perms - can we tighten?
         new PolicyStatement({
@@ -277,7 +274,7 @@ export class ElsaDataApplicationConstruct extends Construct {
     // want to run two Elsa *in the same infrastructure*
     const service = new Service(this, "Service", {
       namespace: props.cloudMapNamespace,
-      name: props.settings.serviceName ?? "Application",
+      name: props.serviceName ?? "Application",
     });
 
     // we register it into the cloudmap service so outside tools can locate it
@@ -331,20 +328,15 @@ export class ElsaDataApplicationConstruct extends Construct {
     taskSecurityGroups: SecurityGroup[],
     secretsPrefix: string
   ): DockerImageFunction {
-    /*const commandLambdaSecurityGroup = new SecurityGroup(
-      this,
-      "CommandLambdaSecurityGroup",
-      {
-        vpc: vpc,
-        // this needs outbound to be able to make the AWS calls it needs (don't want to add PrivateLink)
-        allowAllOutbound: true,
-      }
-    ); */
-
     const dockerImageFolder = path.join(
       __dirname,
       "../../artifacts/elsa-data-command-invoke-lambda-docker-image"
     );
+
+    // NOTE whilst we use the VPC information to communicate to the lambda
+    // how to execute fargate Tasks - the lambda itself *is not* put inside the VPC
+    // (it was taking ages to tear down the CDK stack - and it didn't feel necessary
+    //  as it doesn't talk to the databases or anything)
 
     // this command lambda does almost nothing itself - all it does is trigger the creation of
     // a fargate task and then tracks that to completion - and returns the logs path
@@ -353,9 +345,6 @@ export class ElsaDataApplicationConstruct extends Construct {
     const f = new DockerImageFunction(this, "CommandLambda", {
       memorySize: 128,
       code: DockerImageCode.fromImageAsset(dockerImageFolder),
-      //vpcSubnets: subnetSelection,
-      //vpc: vpc,
-      //securityGroups: [commandLambdaSecurityGroup],
       timeout: Duration.minutes(14),
       environment: {
         CLUSTER_ARN: cluster.clusterArn,

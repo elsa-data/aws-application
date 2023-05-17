@@ -1,14 +1,9 @@
-import { ElsaDataApplicationStackSettings } from "./elsa-data-application/elsa-data-application-stack-settings";
+import { ElsaDataApplicationSettings } from "./elsa-data-application/elsa-data-application-settings";
 
-export interface ElsaDataStackSettings {
-  /**
-   * Forces a new deployment of all stacks by updating the description. Defaults to false.
-   */
-  readonly forceDeployment?: boolean;
-
+export type ElsaDataStackSettings = ElsaDataApplicationSettings & {
   /**
    * The name of a previously installed stack providing us with network/db/storage/cert infrastructure
-   * via cloud formation exports.
+   * via SSM exports.
    */
   readonly infrastructureStackName: string;
 
@@ -18,6 +13,4 @@ export interface ElsaDataStackSettings {
    * the output SSM of the infrastructure stack to see what databases are exported.
    */
   readonly infrastructureDatabaseName: string;
-
-  serviceElsaData: ElsaDataApplicationStackSettings;
-}
+};
