@@ -88,8 +88,11 @@ export const handler = async (event) => {
     // (see AWSlogdriver for ECS)
     const taskArnSplit = taskArn.split("/");
 
-    if (taskArnSplit.length === 3)
+    if (taskArnSplit.length === 3) {
+      // TODO these come from the parent   logStreamPrefix/containername
+      //      so possibly pass these rather than fix them here
       logStreamName = `elsa/ElsaData/${taskArnSplit[2]}`;
+    }
 
     let lastStatus = result.tasks[0].lastStatus;
 

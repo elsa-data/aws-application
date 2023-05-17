@@ -1,6 +1,6 @@
 import { aws_route53 as route53, Stack } from "aws-cdk-lib";
 import { StringParameter } from "aws-cdk-lib/aws-ssm";
-import { Vpc } from "aws-cdk-lib/aws-ec2";
+import { SecurityGroup, Vpc } from "aws-cdk-lib/aws-ec2";
 import { HttpNamespace } from "aws-cdk-lib/aws-servicediscovery";
 import { Certificate } from "aws-cdk-lib/aws-certificatemanager";
 
@@ -40,6 +40,22 @@ export function createVpcFromLookup(
       "isolatedSubnetRouteTableIds"
     ),
   });
+}
+
+export function createEdgeDbSecurityGroupFromLookup(
+  stack: Stack,
+  infrastructureStackId: string,
+  databaseName: string
+) {
+  return SecurityGroup.fromSecurityGroupId(
+    stack,
+    "EdgeDbSecurityGroup",
+    StringParameter.valueFromLookup(
+      stack,
+      `/${infrastructureStackId}/Database/${databaseName}/EdgeDb/securityGroupId`
+    ),
+    {}
+  );
 }
 
 /**

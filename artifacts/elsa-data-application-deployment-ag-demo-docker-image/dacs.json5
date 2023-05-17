@@ -1,0 +1,14 @@
+{
+  dacs: [
+    {
+      id: "manual",
+      type: "manual",
+      description: "Manual",
+    },
+    {
+      id: "redcap-ag-demo",
+      type: "redcap-australian-genomics-demo-csv",
+      description: "Australian Genomics Redcap Demo DAC",
+    },
+  ],
+}

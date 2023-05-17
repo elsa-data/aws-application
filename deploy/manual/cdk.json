@@ -1,4 +1,0 @@
-{
-  "app": "npx ts-node --prefer-ts-exts elsa-data-local-dev-test.ts",
-  "context": {}
-}

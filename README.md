@@ -13,7 +13,11 @@ be approved manually in the builds account.
 
 ## Architecture
 
-![architecture](./docs/ElsaData.drawio.svg)
+![architecture](./docs/elsa-data-architecture.drawio.svg)
+
+## Data Flows
+
+![data flows](./docs/elsa-data-ag-data-flow.drawio.svg)
 
 ## Maintenance
 

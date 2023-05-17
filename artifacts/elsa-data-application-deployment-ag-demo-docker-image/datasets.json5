@@ -1,11 +1,28 @@
 {
   datasets: [
     {
-      name: "Demo",
-      description: "The Australian Genomics demonstration flagship",
-      uri: "urn:fdc:australiangenomics.org.au:2022:dataset/demo",
+      uri: "urn:fdc:australiangenomics.org.au:2022:dataset/demonstration/a",
+      name: "Flagship A",
+      description: "The Australian Genomics demonstration flagship A",
+      loader: "australian-genomics-directories",
       storageLocation: "aws-s3",
-      storageUriPrefix: "s3://agha-gdr-storedemo-2.0/Somatic",
+      storageUriPrefix: "s3://elsa-test-data/FLAGSHIP_A",
+      aws: {
+        // event store id is found in the CloudFormation output that creates this test data bucket
+        eventDataStoreId: "5c021aad-ac9f-4e8c-bae8-b95ecf71c575",
+      },
+    },
+    {
+      uri: "urn:fdc:australiangenomics.org.au:2022:dataset/demonstration/b",
+      name: "Flagship B",
+      description: "The Australian Genomics demonstration flagship B",
+      loader: "australian-genomics-directories",
+      storageLocation: "aws-s3",
+      storageUriPrefix: "s3://elsa-test-data/FLAGSHIP_B",
+      aws: {
+        // event store id is found in the CloudFormation output that creates this test data bucket
+        eventDataStoreId: "5c021aad-ac9f-4e8c-bae8-b95ecf71c575",
+      },
     },
   ],
 }
