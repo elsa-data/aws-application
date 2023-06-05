@@ -3,6 +3,10 @@
   ontoFhirUrl: "https://onto.prod.umccr.org/fhir",
   maxmindDbAssetPath: "asset/maxmind/db/",
   releaseKeyPrefix: "R",
+  branding: {
+    brandName: "AG",
+    logoPath: "/ag-config/ag-logo-200x.png",
+  },
   htsget: {
     url: "https://htsget.elsa.dev.umccr.org",
   },

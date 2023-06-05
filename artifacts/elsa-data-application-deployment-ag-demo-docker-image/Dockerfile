@@ -5,3 +5,6 @@ FROM --platform=linux/amd64 $ELSA_DATA_BASE_IMAGE
 
 # add in specific configs for AG
 COPY *.json5 /ag-config/
+
+# add in an AG logo
+COPY ag-logo-200x.png /ag-config/
