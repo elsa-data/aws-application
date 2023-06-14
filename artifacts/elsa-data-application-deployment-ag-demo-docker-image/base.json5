@@ -3,6 +3,9 @@
   ontoFhirUrl: "https://onto.prod.umccr.org/fhir",
   maxmindDbAssetPath: "asset/maxmind/db/",
   releaseKeyPrefix: "R",
+  "ipLookup": {
+    "maxMindDbPath": "GeoLite2-City.mmdb",
+  },
   branding: {
     brandName: "AG",
     logoPath: "/ag-config/ag-logo-200x.png",

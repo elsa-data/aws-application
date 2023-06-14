@@ -108,3 +108,6 @@ dist
 
 cdk.out/
 /deploy/manual/cdk.context.json
+
+# The MaxMind Database
+*.mmdb
