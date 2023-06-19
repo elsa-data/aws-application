@@ -1,16 +1,29 @@
 {
   // an ontoserver with MONDO terminology loaded
   ontoFhirUrl: "https://onto.prod.umccr.org/fhir",
-  maxmindDbAssetPath: "asset/maxmind/db/",
   releaseKeyPrefix: "R",
-  "ipLookup": {
-    "maxMindDbPath": "GeoLite2-City.mmdb",
+  ipLookup: {
+    maxMindDbPath: "/ag-config/GeoLite2-City.mmdb",
   },
   branding: {
     brandName: "AG",
     logoPath: "/ag-config/ag-logo-200x.png",
   },
-  htsget: {
-    url: "https://htsget.elsa.dev.umccr.org",
-  },
+  sharers: [
+    {
+      id: "object-signing",
+      type: "object-signing",
+      maxAgeInSeconds: 600,
+    },
+    {
+      id: "copy-out",
+      type: "copy-out",
+    },
+    {
+      id: "umccr-htsget",
+      type: "htsget",
+      url: "https://htsget.elsa.dev.umccr.org",
+      maxAgeInSeconds: 600,
+    },
+  ],
 }

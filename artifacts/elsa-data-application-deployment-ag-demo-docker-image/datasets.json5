@@ -1,24 +1,35 @@
 {
   datasets: [
     {
+      uri: "urn:example:elsa-data-demo-dataset-smartie",
+      name: "Smartie",
+      description: "The Smartie flagship - Mini & Mitochondrial data",
+      loader: "australian-genomics-directories",
+      storageLocation: "aws-s3",
+      // NOTE: unlike when running in dev - for this demo deployment we are pointing this to an actual bucket
+      //       (when running in dev we use mocks and therefore the bucket name is essentially made up)
+      storageUriPrefix: "s3://agha-demo-gdr-store/Smartie",
+      // attempt to derive specimen id from filenames - e.g. AAA.bam.bai is the bam for sample AAA
+      specimenIdentifierRegex: "^\\w\\w\\w[._].*$",
+    },
+    {
+      uri: "urn:example:elsa-data-demo-dataset-blackjack",
+      name: "Blackjack",
+      description: "The Blackjack flagship - a study of chromosome 21",
+      loader: "australian-genomics-directories",
+      storageLocation: "aws-s3",
+      // this is a real bucket with real files (albeit only about 10G of data)
+      storageUriPrefix: "s3://agha-demo-gdr-store/Blackjack",
+      // attempt to derive specimen id from filenames
+      specimenIdentifierRegex: "^.*(SAMP\\d\\d\\d\\d).*$",
+    },
+    {
       uri: "urn:fdc:australiangenomics.org.au:2022:dataset/demonstration/a",
       name: "Flagship A",
       description: "The Australian Genomics demonstration flagship A",
       loader: "australian-genomics-directories",
       storageLocation: "aws-s3",
       storageUriPrefix: "s3://elsa-test-data/FLAGSHIP_A",
-      aws: {
-        // event store id is found in the CloudFormation output that creates this test data bucket
-        eventDataStoreId: "5c021aad-ac9f-4e8c-bae8-b95ecf71c575",
-      },
-    },
-    {
-      uri: "urn:fdc:australiangenomics.org.au:2022:dataset/demonstration/b",
-      name: "Flagship B",
-      description: "The Australian Genomics demonstration flagship B",
-      loader: "australian-genomics-directories",
-      storageLocation: "aws-s3",
-      storageUriPrefix: "s3://elsa-test-data/FLAGSHIP_B",
       aws: {
         // event store id is found in the CloudFormation output that creates this test data bucket
         eventDataStoreId: "5c021aad-ac9f-4e8c-bae8-b95ecf71c575",
