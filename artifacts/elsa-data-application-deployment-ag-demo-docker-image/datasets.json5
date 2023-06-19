@@ -10,7 +10,7 @@
       //       (when running in dev we use mocks and therefore the bucket name is essentially made up)
       storageUriPrefix: "s3://agha-demo-gdr-store/Smartie",
       // attempt to derive specimen id from filenames - e.g. AAA.bam.bai is the bam for sample AAA
-      specimenIdentifierRegex: "^\\w\\w\\w[._].*$",
+      specimenIdentifierRegex: "^(\\w\\w\\w)[._].*$",
     },
     {
       uri: "urn:example:elsa-data-demo-dataset-blackjack",
