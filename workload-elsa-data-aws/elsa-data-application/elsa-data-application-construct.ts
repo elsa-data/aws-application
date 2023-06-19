@@ -138,7 +138,7 @@ export class ElsaDataApplicationConstruct extends Construct {
             // override any config settings that we know definitively here because of the
             // way we have done the deployment
             ELSA_DATA_CONFIG_DEPLOYED_URL: this.deployedUrl,
-            ELSA_DATA_CONFIG_PORT: "80",
+            ELSA_DATA_CONFIG_HTTP_HOSTING_PORT: "80",
             ELSA_DATA_CONFIG_AWS_TEMP_BUCKET: props.tempBucket.bucketName,
             ELSA_DATA_CONFIG_SERVICE_DISCOVERY_NAMESPACE:
               props.cloudMapNamespace.namespaceName,

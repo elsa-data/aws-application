@@ -20,7 +20,7 @@ const descriptionWithTag = (tag: string) =>
 const LOCAL_DEV_TEST_DEPLOYED_IMAGE_TAG = "dev";
 
 // should be a 'released' image tag that has already been tested in dev
-const AG_DEMO_DEPLOYED_IMAGE_TAG = "0.1.5";
+const AG_DEMO_DEPLOYED_IMAGE_TAG = "0.1.7";
 
 /**
  * Stack for local dev/test
@@ -76,6 +76,8 @@ new ElsaDataStack(app, "ElsaDataDemoAustralianGenomicsStack", {
       // we are testing out how well here we can reduce the footprint to *just* manifests
       // (object signing permissions are elsewhere)
       "elsa-test-data": ["FLAGSHIP_A/*/manifest.txt"],
+      // synthetic datasets just for demo
+      "agha-demo-gdr-store": ["*"],
     },
     enableAccessPoints: true,
   },

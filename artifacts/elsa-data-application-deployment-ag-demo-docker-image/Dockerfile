@@ -9,4 +9,5 @@ COPY *.json5 /ag-config/
 # add in an AG logo
 COPY ag-logo-200x.png /ag-config/
 
+# add in IP lookup database
 COPY GeoLite2-City.mmdb /ag-config/
