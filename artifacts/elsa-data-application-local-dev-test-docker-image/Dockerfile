@@ -5,6 +5,4 @@ ARG ELSA_DATA_BASE_IMAGE="ghcr.io/umccr/elsa-data:latest"
 # use a dynamic base
 FROM --platform=linux/amd64 $ELSA_DATA_BASE_IMAGE
 
-COPY config /a/config
-
-ENTRYPOINT [ "node", "server/dist/src/entrypoint.js" ]
+COPY *.json5 /dev-config/
