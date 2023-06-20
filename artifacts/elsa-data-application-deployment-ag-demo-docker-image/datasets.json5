@@ -3,14 +3,18 @@
     {
       uri: "urn:example:elsa-data-demo-dataset-smartie",
       name: "Smartie",
-      description: "The Smartie flagship - Mini & Mitochondrial data",
+      description: "The Smartie flagship - (m)ini & (m)itochondrial data",
       loader: "australian-genomics-directories",
       storageLocation: "aws-s3",
       // NOTE: unlike when running in dev - for this demo deployment we are pointing this to an actual bucket
-      //       (when running in dev we use mocks and therefore the bucket name is essentially made up)
-      storageUriPrefix: "s3://agha-demo-gdr-store/Smartie",
+      //       (when running in dev we use mocks and therefore the bucket name is essentially made up - this one is real)
+      storageUriPrefix: "s3://elsa-data-demo-agha-gdr-store/Smartie",
       // attempt to derive specimen id from filenames - e.g. AAA.bam.bai is the bam for sample AAA
-      specimenIdentifierRegex: "^(\\w\\w\\w)[._].*$",
+      specimenIdentifierRegex: "^.*([A-Z][A-Z][A-Z])[._].*$",
+      aws: {
+        // event store id is found in the CloudFormation output that creates this test data bucket
+        eventDataStoreId: "0930ca75-553f-43cc-97e0-93e8bebd7fb1",
+      },
     },
     {
       uri: "urn:example:elsa-data-demo-dataset-blackjack",
@@ -19,20 +23,12 @@
       loader: "australian-genomics-directories",
       storageLocation: "aws-s3",
       // this is a real bucket with real files (albeit only about 10G of data)
-      storageUriPrefix: "s3://agha-demo-gdr-store/Blackjack",
+      storageUriPrefix: "s3://elsa-data-demo-agha-gdr-store/Blackjack",
       // attempt to derive specimen id from filenames
       specimenIdentifierRegex: "^.*(SAMP\\d\\d\\d\\d).*$",
-    },
-    {
-      uri: "urn:fdc:australiangenomics.org.au:2022:dataset/demonstration/a",
-      name: "Flagship A",
-      description: "The Australian Genomics demonstration flagship A",
-      loader: "australian-genomics-directories",
-      storageLocation: "aws-s3",
-      storageUriPrefix: "s3://elsa-test-data/FLAGSHIP_A",
       aws: {
         // event store id is found in the CloudFormation output that creates this test data bucket
-        eventDataStoreId: "5c021aad-ac9f-4e8c-bae8-b95ecf71c575",
+        eventDataStoreId: "0930ca75-553f-43cc-97e0-93e8bebd7fb1",
       },
     },
   ],

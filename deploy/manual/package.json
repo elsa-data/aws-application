@@ -7,7 +7,9 @@
     "dev-deploy": "cdk --app 'npx ts-node stacks.ts' deploy ElsaDataLocalDevTestStack",
     "dev-destroy": "cdk --app 'npx ts-node stacks.ts' destroy ElsaDataLocalDevTestStack",
     "agdemo-deploy": "cdk --app 'npx ts-node stacks.ts' deploy ElsaDataDemoAustralianGenomicsStack",
-    "agdemo-destroy": "cdk --app 'npx ts-node stacks.ts' destroy ElsaDataDemoAustralianGenomicsStack"
+    "agdemo-destroy": "cdk --app 'npx ts-node stacks.ts' destroy ElsaDataDemoAustralianGenomicsStack",
+    "agdemo-bucket-deploy": "cdk --app 'npx ts-node stacks.ts' deploy ElsaDataDemoAustralianGenomicsExampleBucketStack",
+    "agdemo-bucket-destroy": "cdk --app 'npx ts-node stacks.ts' destroy ElsaDataDemoAustralianGenomicsExampleBucketStack"
   },
   "devDependencies": {
     "@tsconfig/node18": "2.0.0",
