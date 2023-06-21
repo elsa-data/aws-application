@@ -86,9 +86,14 @@ new ElsaDataStack(app, "ElsaDataDemoAustralianGenomicsStack", {
       // (object signing permissions are elsewhere)
       "elsa-test-data": ["FLAGSHIP_A/*/manifest.txt"],
       // synthetic datasets just for demo
-      [AG_DEMO_BUCKET_NAME]: ["*"],
+      [AG_DEMO_BUCKET_NAME]: [
+        "Blackjack/*/manifest.txt",
+        "Blackjack/*/*.phenopacket.json",
+        "Smartie/*/manifest.txt",
+        "Smartie/*/*.phenopacket.json",
+      ],
     },
-    enableAccessPoints: true,
+    enableAccessPoints: false,
   },
   metaConfigSources:
     "file('base') file('admins') file('datasets') file('dacs') aws-secret('ElsaDataDemoConfiguration')",

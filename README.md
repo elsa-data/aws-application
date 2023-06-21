@@ -2,18 +2,9 @@
 
 CDK stacks for deploying Elsa Data.
 
-## Deployment
+## AWS Deploy (As Built)
 
-For this UMCCR pipeline, Elsa Data is deployed to
-
-- [Dev](https://elsa.dev.umccr.org)
-
-New deployments are triggered on commits to Github main. Promotion to production needs to
-be approved manually in the builds account.
-
-## Architecture
-
-![architecture](./docs/elsa-data-architecture.drawio.svg)
+![aws deploy as built](./docs/elsa-data-aws-deploy-as-built.drawio.svg)
 
 ## Data Flows
 
