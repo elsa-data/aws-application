@@ -8,6 +8,7 @@
     // these are switched off until they reach production level
     enableConsentDisplay: false,
     enableCohortConstructor: false,
+    enableDataEgressViewer: true,
   },
   ipLookup: {
     maxMindDbPath: "/ag-config/GeoLite2-City.mmdb",
