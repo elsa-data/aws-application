@@ -259,6 +259,14 @@ export class ElsaDataApplicationConstruct extends Construct {
       })
     );
 
+    // allow cloudtrail queries to get data egress records
+    policy.addStatements(
+      new PolicyStatement({
+        actions: ["cloudtrail:StartQuery", "cloudtrail:GetQueryResults"],
+        resources: ["*"],
+      })
+    );
+
     // for some of our scaling out work (Beacon etc) - we are going to make Lambdas that we want to be able to invoke
     // again we wildcard to a designated prefix of elsa-data*
     // TODO parameterise this to not have a magic string
