@@ -1,19 +1,25 @@
 {
-  // an ontoserver with MONDO terminology loaded
-  ontoFhirUrl: "https://onto.prod.umccr.org/fhir",
-  releaseKeyPrefix: "R",
-  ipLookup: {
-    maxMindDbPath: "/ag-config/GeoLite2-City.mmdb",
-  },
   branding: {
     brandName: "AG",
     logoPath: "/ag-config/ag-logo-200x.png",
   },
+  releaseKeyPrefix: "AGR",
+  feature: {
+    // these are switched off until they reach production level
+    enableConsentDisplay: false,
+    enableCohortConstructor: false,
+    enableDataEgressViewer: true,
+  },
+  ipLookup: {
+    maxMindDbPath: "/ag-config/GeoLite2-City.mmdb",
+  },
+  // an ontoserver with MONDO terminology loaded
+  ontoFhirUrl: "https://onto.prod.umccr.org/fhir",
   sharers: [
     {
       id: "object-signing",
       type: "object-signing",
-      maxAgeInSeconds: 600,
+      maxAgeInSeconds: 8640,
     },
     {
       id: "copy-out",

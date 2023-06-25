@@ -170,7 +170,9 @@ export class ElsaDataApplicationConstruct extends Construct {
           actions: ["s3:GetObject"],
           // NOTE: we could consider restricting to region or account here in constructing the ARNS
           // but given the bucket names are already globally specific we leave them open
-          resources: keyWildcards.map((k) => `arn:aws:s3:::${bucketName}/${k}`),
+          resources: keyWildcards.map(
+            (k) => `arn:${Stack.of(this).partition}:s3:::${bucketName}/${k}`
+          ),
         })
       );
     }
@@ -179,7 +181,7 @@ export class ElsaDataApplicationConstruct extends Construct {
       new PolicyStatement({
         actions: ["s3:ListBucket"],
         resources: Object.keys(props.awsPermissions.dataBucketPaths).map(
-          (b) => `arn:aws:s3:::${b}`
+          (b) => `arn:${Stack.of(this).partition}:s3:::${b}`
         ),
       })
     );
@@ -215,13 +217,45 @@ export class ElsaDataApplicationConstruct extends Construct {
             "cloudformation:DeleteStack",
           ],
           resources: [
-            `arn:aws:cloudformation:${Stack.of(this).region}:${
-              Stack.of(this).account
-            }:stack/elsa-data-*`,
+            `arn:${Stack.of(this).partition}:cloudformation:${
+              Stack.of(this).region
+            }:${Stack.of(this).account}:stack/elsa-data-*`,
           ],
         })
       );
     }
+
+    // allow starting our steps copy out and any lookup operations we need to perform
+    policy.addStatements(
+      new PolicyStatement({
+        actions: ["states:StartExecution"],
+        resources: [
+          `arn:${Stack.of(this).partition}:states:${Stack.of(this).region}:${
+            Stack.of(this).account
+          }:stateMachine:CopyOut*`,
+        ],
+      }),
+      new PolicyStatement({
+        actions: [
+          "states:StopExecution",
+          "states:DescribeExecution",
+          "states:ListMapRuns",
+        ],
+        resources: [
+          `arn:${Stack.of(this).partition}:states:${Stack.of(this).region}:${
+            Stack.of(this).account
+          }:execution:CopyOut*:*`,
+        ],
+      }),
+      new PolicyStatement({
+        actions: ["states:DescribeMapRun"],
+        resources: [
+          `arn:${Stack.of(this).partition}:states:${Stack.of(this).region}:${
+            Stack.of(this).account
+          }:mapRun:CopyOut*/*:*`,
+        ],
+      })
+    );
 
     // for some of our scaling out work (Beacon etc) - we are going to make Lambdas that we want to be able to invoke
     // again we wildcard to a designated prefix of elsa-data*
@@ -230,7 +264,7 @@ export class ElsaDataApplicationConstruct extends Construct {
       new PolicyStatement({
         actions: ["lambda:InvokeFunction"],
         resources: [
-          `arn:aws:lambda:${Stack.of(this).region}:${
+          `arn:${Stack.of(this).partition}:lambda:${Stack.of(this).region}:${
             Stack.of(this).account
           }:function:elsa-data-*`,
         ],
@@ -297,9 +331,9 @@ export class ElsaDataApplicationConstruct extends Construct {
     return new PolicyStatement({
       actions: ["secretsmanager:GetSecretValue"],
       resources: [
-        `arn:aws:secretsmanager:${Stack.of(this).region}:${
-          Stack.of(this).account
-        }:secret:${secretsPrefix}*`,
+        `arn:${Stack.of(this).partition}:secretsmanager:${
+          Stack.of(this).region
+        }:${Stack.of(this).account}:secret:${secretsPrefix}*`,
       ],
     });
   }
