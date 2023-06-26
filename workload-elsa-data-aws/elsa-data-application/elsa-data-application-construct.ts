@@ -128,7 +128,7 @@ export class ElsaDataApplicationConstruct extends Construct {
             // we have a DSN that has no password or database name
             EDGEDB_DSN: props.edgeDbDsnNoPassword,
             // we can choose the database name ourselves or default
-            EDGEDB_DATABASE: props.databaseName ?? "elsadata",
+            EDGEDB_DATABASE: props.databaseName ?? "edgedb",
             // we don't do EdgeDb certs (our EdgeDb has made self-signed certs) so we must set this
             EDGEDB_CLIENT_TLS_SECURITY: "insecure",
             // environment variables set to setup the meta system for Elsa configuration

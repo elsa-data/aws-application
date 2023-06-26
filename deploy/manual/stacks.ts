@@ -42,11 +42,21 @@ new ElsaDataStack(app, "ElsaDataLocalDevTestStack", {
   description: descriptionWithTag(LOCAL_DEV_TEST_DEPLOYED_IMAGE_TAG),
   tags: tags,
   infrastructureStackName: "ElsaDataLocalDevTestInfrastructureStack",
-  infrastructureDatabaseName: "elsa_data_serverless_database",
+  infrastructureDatabaseName: "elsa_serverless_database",
   urlPrefix: "elsa-data",
   imageBaseName: `ghcr.io/umccr/elsa-data:${LOCAL_DEV_TEST_DEPLOYED_IMAGE_TAG}`,
+  buildLocal: {
+    folder: join(
+      __dirname,
+      "..",
+      "..",
+      "artifacts",
+      "elsa-data-application-local-dev-test-docker-image"
+    ),
+  },
   metaConfigSources:
-    "file('base') file('umccr-garvan-dev-super-admins') file('dev-deployed') file('datasets') aws-secret('ElsaDataDevDeployed')",
+    "file('base') file('admins') file('datasets') file('dacs') aws-secret('ElsaDataDevDeployed')",
+  metaConfigFolders: "/dev-config",
   awsPermissions: {
     dataBucketPaths: {
       "umccr-10f-data-dev": ["ASHKENAZIM/*"],
