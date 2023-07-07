@@ -32,17 +32,20 @@ const AG_DEMO_DEPLOYED_IMAGE =
 const AG_DEMO_BUCKET_NAME = "elsa-data-demo-agha-gdr-store";
 
 /**
- * Stack for local dev/test
+ * Stack for dev
  */
-new ElsaDataStack(app, "ElsaDataLocalDevTestStack", {
+new ElsaDataStack(app, "ElsaDataDevStack", {
   env: {
     account: "843407916570",
     region: "ap-southeast-2",
   },
-  description: descriptionWithTag(LOCAL_DEV_TEST_DEPLOYED_IMAGE_TAG),
-  tags: tags,
-  infrastructureStackName: "ElsaDataLocalDevTestInfrastructureStack",
-  infrastructureDatabaseName: "elsa_serverless_database",
+  description: descriptionWithTag(undefined),
+  tags: {
+    "umccr-org:ProductVersion": LOCAL_DEV_TEST_DEPLOYED_IMAGE_TAG,
+    ...tags,
+  },
+  infrastructureStackName: "ElsaDataDevInfrastructureStack",
+  infrastructureDatabaseName: "elsa_data_serverless_database",
   urlPrefix: "elsa-data",
   imageBaseName: `ghcr.io/umccr/elsa-data:${LOCAL_DEV_TEST_DEPLOYED_IMAGE_TAG}`,
   buildLocal: {
