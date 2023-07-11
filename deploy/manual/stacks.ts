@@ -22,12 +22,14 @@ const descriptionWithTag = (tag?: string) =>
 // dev though
 const LOCAL_DEV_TEST_DEPLOYED_IMAGE_TAG = "dev";
 
+const GHCR_IO_ELSA_DATA = "ghcr.io/umccr/elsa-data";
+
 // should be a 'released' image tag that has already been tested in dev
+const AG_DEMO_DEPLOYED_IMAGE = `${GHCR_IO_ELSA_DATA}:0.2.0`;
 // const AG_DEMO_DEPLOYED_IMAGE = "ghcr.io/umccr/elsa-data:0.1.7";
 // const AG_DEMO_DEPLOYED_IMAGE = "ghcr.io/umccr/elsa-data:pr-363";
 // or can be a very specific SHA256 (NOTE needs the @ not colon)
-const AG_DEMO_DEPLOYED_IMAGE =
-  "ghcr.io/umccr/elsa-data@sha256:0707e0c667d809459324312b7280e7a7f1f1864c43591128596aebd5b6ee7adb";
+// const AG_DEMO_DEPLOYED_IMAGE = "ghcr.io/umccr/elsa-data@sha256:0707e0c667d809459324312b7280e7a7f1f1864c43591128596aebd5b6ee7adb";
 
 const AG_DEMO_BUCKET_NAME = "elsa-data-demo-agha-gdr-store";
 
@@ -92,15 +94,13 @@ new ElsaDataStack(app, "ElsaDataDemoAustralianGenomicsStack", {
   },
   awsPermissions: {
     dataBucketPaths: {
-      // we are testing out how well here we can reduce the footprint to *just* manifests
-      // (object signing permissions are elsewhere)
-      "elsa-test-data": ["FLAGSHIP_A/*/manifest.txt"],
       // synthetic datasets just for demo
       [AG_DEMO_BUCKET_NAME]: [
         "Blackjack/*/manifest.txt",
         "Blackjack/*/*.phenopacket.json",
         "Smartie/*/manifest.txt",
         "Smartie/*/*.phenopacket.json",
+        "FLAGSHIP_A/*/manifest.txt",
       ],
     },
     enableAccessPoints: false,
@@ -112,7 +112,7 @@ new ElsaDataStack(app, "ElsaDataDemoAustralianGenomicsStack", {
   // - create new databases in the EdgeDb UI
   // - then do a CDK update with the new name here
   // - then do a db-migrate
-  databaseName: "elsadata2",
+  databaseName: "elsadata",
 });
 
 new ElsaDataExampleBucketStack(
