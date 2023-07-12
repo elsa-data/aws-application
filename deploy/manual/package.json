@@ -4,8 +4,8 @@
   "private": true,
   "description": "A CDK pipeline for building/deploying a Elsa Data stack in the UMCCR environment",
   "scripts": {
-    "dev-deploy": "cdk --app 'npx ts-node stacks.ts' deploy ElsaDataLocalDevTestStack",
-    "dev-destroy": "cdk --app 'npx ts-node stacks.ts' destroy ElsaDataLocalDevTestStack",
+    "dev-deploy": "cdk --app 'npx ts-node stacks.ts' deploy ElsaDataDevStack",
+    "dev-destroy": "cdk --app 'npx ts-node stacks.ts' destroy ElsaDataDevStack",
     "agdemo-deploy": "cdk --app 'npx ts-node stacks.ts' deploy ElsaDataDemoAustralianGenomicsStack",
     "agdemo-destroy": "cdk --app 'npx ts-node stacks.ts' destroy ElsaDataDemoAustralianGenomicsStack",
     "agdemo-bucket-deploy": "cdk --app 'npx ts-node stacks.ts' deploy ElsaDataDemoAustralianGenomicsExampleBucketStack",
