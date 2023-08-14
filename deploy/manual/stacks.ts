@@ -2,8 +2,18 @@ import "source-map-support/register";
 import * as cdk from "aws-cdk-lib";
 import { join } from "path";
 import { ElsaDataStack } from "@umccr/elsa-data-aws-application";
+import { Aspects } from "aws-cdk-lib";
+import {
+  AwsSolutionsChecks,
+  HIPAASecurityChecks,
+  NIST80053R5Checks,
+} from "cdk-nag";
 
 const app = new cdk.App();
+
+Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
+Aspects.of(app).add(new HIPAASecurityChecks({ verbose: true }));
+Aspects.of(app).add(new NIST80053R5Checks({ verbose: true }));
 
 // tags for our stacks
 const tags = {
