@@ -31,7 +31,7 @@ import { ICertificate } from "aws-cdk-lib/aws-certificatemanager";
 import { ElsaDataApplicationSettings } from "./elsa-data-application-settings";
 import { IBucket } from "aws-cdk-lib/aws-s3";
 
-type Props = ElsaDataApplicationSettings & {
+interface Props extends ElsaDataApplicationSettings {
   readonly vpc: ec2.IVpc;
 
   readonly hostedZone: IHostedZone;
@@ -48,12 +48,12 @@ type Props = ElsaDataApplicationSettings & {
   // the security group of our edgedb - that we will put ourselves in to enable access
   readonly edgeDbSecurityGroup: ISecurityGroup;
 
-  // the prefix of our infrastructure secrets - so we can set a proper wildcard secret policy
-  readonly secretsPrefix: string;
+  // a policy statement that we need to add to our running service in order to give us access to the secrets
+  readonly accessSecretsPolicyStatement: PolicyStatement;
 
   // an already created temp bucket we can use
   readonly tempBucket: IBucket;
-};
+}
 
 // we need a consistent name within the ECS infrastructure for our container
 // there seems to be no reason why this would need to be configurable though, hence this constant
@@ -159,7 +159,7 @@ export class ElsaDataApplicationConstruct extends Construct {
     const policy = new Policy(this, "FargateServiceTaskPolicy");
 
     // need to be able to fetch secrets - we wildcard to every Secret that has our designated prefix of elsa*
-    policy.addStatements(this.getSecretPolicyStatement(props.secretsPrefix));
+    policy.addStatements(props.accessSecretsPolicyStatement);
 
     // restrict our Get operations to a very specific set of keys in the named buckets
     // NOTE: our 'signing' is always done by a different user so this is not the only
@@ -308,7 +308,7 @@ export class ElsaDataApplicationConstruct extends Construct {
       privateServiceWithLoadBalancer.clusterLogGroup,
       privateServiceWithLoadBalancer.service.taskDefinition,
       [privateServiceWithLoadBalancer.clusterSecurityGroup],
-      props.secretsPrefix
+      props.accessSecretsPolicyStatement
     );
 
     // register a service for the Application in our namespace
@@ -332,23 +332,6 @@ export class ElsaDataApplicationConstruct extends Construct {
   }
 
   /**
-   * A policy statement that we can use that gives access only to
-   * known Elsa Data secrets (by naming convention).
-   *
-   * @private
-   */
-  private getSecretPolicyStatement(secretsPrefix: string): PolicyStatement {
-    return new PolicyStatement({
-      actions: ["secretsmanager:GetSecretValue"],
-      resources: [
-        `arn:${Stack.of(this).partition}:secretsmanager:${
-          Stack.of(this).region
-        }:${Stack.of(this).account}:secret:${secretsPrefix}*`,
-      ],
-    });
-  }
-
-  /**
    * Add a command lambda that can start Elsa Data tasks in the cluster for the purposes of
    * executing Elsa Data docker commands.
    *
@@ -358,7 +341,7 @@ export class ElsaDataApplicationConstruct extends Construct {
    * @param clusterLogGroup
    * @param taskDefinition
    * @param taskSecurityGroups
-   * @param secretsPrefix
+   * @param secretsPolicy
    * @private
    */
   private addCommandLambda(
@@ -368,7 +351,7 @@ export class ElsaDataApplicationConstruct extends Construct {
     clusterLogGroup: LogGroup,
     taskDefinition: TaskDefinition,
     taskSecurityGroups: SecurityGroup[],
-    secretsPrefix: string
+    secretsPolicy: PolicyStatement
   ): DockerImageFunction {
     const dockerImageFolder = path.join(
       __dirname,
@@ -409,7 +392,7 @@ export class ElsaDataApplicationConstruct extends Construct {
       new Policy(this, "CommandTasksPolicy", {
         statements: [
           // need to be able to fetch secrets - we wildcard to everything with our designated prefix
-          this.getSecretPolicyStatement(secretsPrefix),
+          secretsPolicy,
           // restricted to running our task only on our cluster
           new PolicyStatement({
             actions: ["ecs:RunTask"],

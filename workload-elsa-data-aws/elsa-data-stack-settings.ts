@@ -1,6 +1,11 @@
 import { ElsaDataApplicationSettings } from "./elsa-data-application/elsa-data-application-settings";
+export {
+  ElsaDataApplicationSettings,
+  ElsaDataApplicationBuildLocal,
+  ElsaDataApplicationAwsPermissions,
+} from "./elsa-data-application/elsa-data-application-settings";
 
-export type ElsaDataStackSettings = ElsaDataApplicationSettings & {
+export interface ElsaDataStackSettings extends ElsaDataApplicationSettings {
   /**
    * The name of a previously installed stack providing us with network/db/storage/cert infrastructure
    * via SSM exports.
@@ -13,4 +18,4 @@ export type ElsaDataStackSettings = ElsaDataApplicationSettings & {
    * the output SSM of the infrastructure stack to see what databases are exported.
    */
   readonly infrastructureDatabaseName: string;
-};
+}

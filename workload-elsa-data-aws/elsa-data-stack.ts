@@ -1,17 +1,18 @@
 import { ArnComponents, Stack, StackProps } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import { ElsaDataApplicationConstruct } from "./elsa-data-application/elsa-data-application-construct";
-import { Service } from "aws-cdk-lib/aws-servicediscovery";
 import { ElsaDataStackSettings } from "./elsa-data-stack-settings";
-import {
-  createDnsFromLookup,
-  createEdgeDbSecurityGroupFromLookup,
-  createNamespaceFromLookup,
-  createVpcFromLookup,
-} from "./create-from-lookup";
 import { StringParameter } from "aws-cdk-lib/aws-ssm";
 import { Secret } from "aws-cdk-lib/aws-secretsmanager";
 import { Bucket } from "aws-cdk-lib/aws-s3";
+import { ElsaDataInfrastructureClient } from "@umccr/elsa-data-aws-infrastructure-client";
+
+export {
+  ElsaDataStackSettings,
+  ElsaDataApplicationSettings,
+  ElsaDataApplicationBuildLocal,
+  ElsaDataApplicationAwsPermissions,
+} from "./elsa-data-stack-settings";
 
 /**
  * A stack deploying the Elsa Data application into an existing set of infrastructure.
@@ -20,7 +21,8 @@ export class ElsaDataStack extends Stack {
   constructor(
     scope: Construct,
     id: string,
-    props: StackProps & ElsaDataStackSettings
+    props: StackProps,
+    applicationProps: ElsaDataStackSettings
   ) {
     super(scope, id, props);
 
@@ -53,34 +55,31 @@ export class ElsaDataStack extends Stack {
       return returnLookupValue;
     };
 
-    const vpc = createVpcFromLookup(this, props.infrastructureStackName);
-
-    const namespace = createNamespaceFromLookup(
-      this,
-      props.infrastructureStackName
+    const infraClient = new ElsaDataInfrastructureClient(
+      applicationProps.infrastructureStackName
     );
 
-    const { hostedZone, certificate } = createDnsFromLookup(
-      this,
-      props.infrastructureStackName
-    );
+    const vpc = infraClient.getVpcFromLookup(this);
 
-    const edgeDbSecurityGroup = createEdgeDbSecurityGroupFromLookup(
+    const namespace = infraClient.getNamespaceFromLookup(this);
+
+    const { hostedZone, certificate } = infraClient.getDnsFromLookup(this);
+
+    const edgeDbSecurityGroup = infraClient.getEdgeDbSecurityGroupFromLookup(
       this,
-      props.infrastructureStackName,
-      props.infrastructureDatabaseName
+      applicationProps.infrastructureDatabaseName
     );
 
     const edgeDbDnsNoPassword = StringParameter.valueFromLookup(
       this,
-      `/${props.infrastructureStackName}/Database/${props.infrastructureDatabaseName}/EdgeDb/dsnNoPasswordOrDatabase`
+      `/${applicationProps.infrastructureStackName}/Database/${applicationProps.infrastructureDatabaseName}/EdgeDb/dsnNoPasswordOrDatabase`
     );
 
     const edgeDbAdminPasswordSecret = Secret.fromSecretCompleteArn(
       this,
       "AdminSecret",
       delayedArnLookupHelper(
-        `/${props.infrastructureStackName}/Database/${props.infrastructureDatabaseName}/EdgeDb/adminPasswordSecretArn`,
+        `/${applicationProps.infrastructureStackName}/Database/${applicationProps.infrastructureDatabaseName}/EdgeDb/adminPasswordSecretArn`,
         {
           service: "secretsmanager",
           resource: "secret",
@@ -89,16 +88,11 @@ export class ElsaDataStack extends Stack {
       )
     );
 
-    const secretsPrefix = StringParameter.valueFromLookup(
-      this,
-      `/${props.infrastructureStackName}/SecretsManager/secretsPrefix`
-    );
-
     const tempBucket = Bucket.fromBucketArn(
       this,
       "TempBucket",
       delayedArnLookupHelper(
-        `/${props.infrastructureStackName}/TempPrivateBucket/bucketArn`,
+        `/${applicationProps.infrastructureStackName}/TempPrivateBucket/bucketArn`,
         {
           service: "s3",
           resource: "a-bucket-name-though-this-is-not-real",
@@ -108,16 +102,16 @@ export class ElsaDataStack extends Stack {
 
     new ElsaDataApplicationConstruct(this, "ElsaData", {
       vpc: vpc,
-      env: props.env,
       hostedZoneCertificate: certificate!,
       hostedZone: hostedZone,
       cloudMapNamespace: namespace,
       edgeDbDsnNoPassword: edgeDbDnsNoPassword,
       edgeDbPasswordSecret: edgeDbAdminPasswordSecret,
       edgeDbSecurityGroup: edgeDbSecurityGroup,
-      secretsPrefix: secretsPrefix,
+      accessSecretsPolicyStatement:
+        infraClient.getSecretPolicyStatementFromLookup(this),
       tempBucket: tempBucket,
-      ...props,
+      ...applicationProps,
     });
 
     /*

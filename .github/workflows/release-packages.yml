@@ -1,0 +1,63 @@
+name: Release Packages
+
+on:
+  release:
+    types: [released]
+
+jobs:
+  publish-to-npm-registry:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: "npm"
+          cache-dependency-path: workload-elsa-data-aws/package-lock.json
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: "npm"
+          cache-dependency-path: client/package-lock.json
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: "npm"
+          cache-dependency-path: stack/package-lock.json
+
+      # the shared project is just some simple constants in JS that are shared
+      # they are not installed or published, but we install their packages if needed
+      - run: npm ci
+        working-directory: shared
+
+      # build the stack as a JSII package
+
+      - run: npm ci
+        working-directory: stack
+
+      - run: npm version ${{github.ref_name}}
+        working-directory: stack
+
+      - run: npm run build
+        working-directory: stack
+
+      - run: npm run package
+        working-directory: stack
+
+      # if all the builds have completed - we can publish the two packages
+
+      - run: npx publib-npm
+        working-directory: client
+        env:
+          NPM_TOKEN: ${{secrets.NPM_PUBLISH_TOKEN}}
+          NPM_ACCESS_LEVEL: public
+
+      - run: npx publib-npm
+        working-directory: stack
+        env:
+          NPM_TOKEN: ${{secrets.NPM_PUBLISH_TOKEN}}
+          NPM_ACCESS_LEVEL: public

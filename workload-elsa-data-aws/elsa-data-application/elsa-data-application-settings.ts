@@ -1,7 +1,7 @@
 /**
  * The user settable settings for the Elsa Data application service.
  */
-export type ElsaDataApplicationSettings = {
+export interface ElsaDataApplicationSettings {
   /**
    * The URL prefix (name before first dot in hostname).
    * This is something that is expected to be different per deployment (e.g. "elsa", "elsa-demo").
@@ -16,17 +16,7 @@ export type ElsaDataApplicationSettings = {
    * a custom image rather than use an image directly. If this is not present, the `imageBaseName`
    * will be used directly from its public registry.
    */
-  readonly buildLocal?: {
-    /**
-     * A local folder location for where CDK will be asked to build the
-     * Elsa Data to deploy.
-     */
-    readonly folder: string;
-
-    readonly version?: string;
-    readonly built?: string;
-    readonly revision?: string;
-  };
+  readonly buildLocal?: ElsaDataApplicationBuildLocal;
 
   /**
    * The Docker image name for the base image of Elsa Data that will use for
@@ -56,25 +46,7 @@ export type ElsaDataApplicationSettings = {
    * would be derivable from the Elsa configuration but it is not
    * available at this point in deployment)
    */
-  readonly awsPermissions: {
-    /**
-     * Bucket paths. For each bucket shared by this Elsa Data, we list
-     * the Keys within that bucket as wildcards. This goes to setting the precise S3
-     * read permissions for the Elsa service.
-     * e.g.
-     *  {
-     *    "my-bucket": [ "Cardiac2022/*", "Mito/*manifest.txt" ]
-     *  }
-     */
-    readonly dataBucketPaths: { [bucket: string]: string[] };
-
-    /**
-     * The access point sharing mechanism needs to be given broad
-     * permissions to install CloudFormation - so if it is not
-     * needed then the permissions can be skipped.
-     */
-    readonly enableAccessPoints: boolean;
-  };
+  readonly awsPermissions: ElsaDataApplicationAwsPermissions;
 
   /**
    * The desired count of number of Elsa Data application containers - defaults to 1
@@ -100,4 +72,36 @@ export type ElsaDataApplicationSettings = {
    * If present, an alternative edgedb database name for the application - defaults to something sensible
    */
   readonly databaseName?: string;
-};
+}
+
+export interface ElsaDataApplicationBuildLocal {
+  /**
+   * A local folder location for where CDK will be asked to build the
+   * Elsa Data to deploy.
+   */
+  readonly folder: string;
+
+  readonly version?: string;
+  readonly built?: string;
+  readonly revision?: string;
+}
+
+export interface ElsaDataApplicationAwsPermissions {
+  /**
+   * Bucket paths. For each bucket shared by this Elsa Data, we list
+   * the Keys within that bucket as wildcards. This goes to setting the precise S3
+   * read permissions for the Elsa service.
+   * e.g.
+   *  {
+   *    "my-bucket": [ "Cardiac2022/*", "Mito/*manifest.txt" ]
+   *  }
+   */
+  readonly dataBucketPaths: { [bucket: string]: string[] };
+
+  /**
+   * The access point sharing mechanism needs to be given broad
+   * permissions to install CloudFormation - so if it is not
+   * needed then the permissions can be skipped.
+   */
+  readonly enableAccessPoints: boolean;
+}

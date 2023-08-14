@@ -1,20 +1,45 @@
 {
-  "name": "elsa-data-aws-deploy",
-  "version": "0.9.0",
-  "description": "A CDK pipeline for building/deploying a Elsa Data stack in the UMCCR environment",
-  "devDependencies": {
-    "@tsconfig/node18": "2.0.0",
-    "@types/node": "18.16.3",
-    "aws-cdk": "2.79.0",
-    "prettier": "2.8.8",
-    "ts-node": "10.9.1",
-    "typescript": "5.0.4"
+  "name": "@umccr/elsa-data-aws-application",
+  "version": "0.0.0",
+  "description": "A CDK for creating the base Elsa Data application",
+  "author": {
+    "name": "University of Melbourne Centre for Cancer Research",
+    "organization": true
   },
-  "dependencies": {
-    "aws-cdk-lib": "2.79.0",
-    "@aws-cdk/aws-apprunner-alpha": "2.79.0-alpha.0",
-    "constructs": "10.2.13",
-    "esbuild": "0.17.18",
-    "source-map-support": "0.5.21"
+  "main": "elsa-data-stack.js",
+  "types": "elsa-data-stack.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/umccr/elsa-data-aws-application"
+  },
+  "license": "MIT",
+  "scripts": {
+    "build": "jsii -vvv",
+    "build:watch": "jsii -w",
+    "package": "jsii-pacmak -vvv"
+  },
+  "keywords": [
+    "jsii",
+    "cdk"
+  ],
+  "jsii": {
+    "outdir": "dist",
+    "targets": {}
+  },
+  "peerDependencies": {
+    "aws-cdk-lib": "^2.91.0",
+    "constructs": "^10.2.69"
+  },
+  "devDependencies": {
+    "aws-cdk": "2.91.0",
+    "aws-cdk-lib": "2.91.0",
+    "@aws-cdk/aws-apprunner-alpha": "2.91.0-alpha.0",
+    "@umccr/elsa-data-aws-infrastructure-client": "1.1.0",
+    "constructs": "10.2.69",
+    "jsii": "5.1.10",
+    "jsii-pacmak": "1.86.1",
+    "prettier": "3.0.1",
+    "publib": "0.2.737",
+    "typescript": "5.1.6"
   }
 }

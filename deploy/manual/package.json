@@ -5,24 +5,18 @@
   "description": "A CDK pipeline for building/deploying a Elsa Data stack in the UMCCR environment",
   "scripts": {
     "dev-deploy": "cdk --app 'npx ts-node stacks.ts' deploy ElsaDataDevStack",
-    "dev-destroy": "cdk --app 'npx ts-node stacks.ts' destroy ElsaDataDevStack",
-    "agdemo-deploy": "cdk --app 'npx ts-node stacks.ts' deploy ElsaDataDemoAustralianGenomicsStack",
-    "agdemo-destroy": "cdk --app 'npx ts-node stacks.ts' destroy ElsaDataDemoAustralianGenomicsStack",
-    "agdemo-bucket-deploy": "cdk --app 'npx ts-node stacks.ts' deploy ElsaDataDemoAustralianGenomicsExampleBucketStack",
-    "agdemo-bucket-destroy": "cdk --app 'npx ts-node stacks.ts' destroy ElsaDataDemoAustralianGenomicsExampleBucketStack"
+    "dev-destroy": "cdk --app 'npx ts-node stacks.ts' destroy ElsaDataDevStack"
   },
   "devDependencies": {
-    "@tsconfig/node18": "2.0.0",
-    "@types/node": "18.16.3",
-    "aws-cdk": "2.77.0",
-    "prettier": "2.8.8",
+    "@tsconfig/node18": "18.2.0",
+    "aws-cdk": "2.91.0",
+    "aws-cdk-lib": "2.91.0",
+    "prettier": "3.0.1",
     "ts-node": "10.9.1",
-    "typescript": "5.0.4"
+    "typescript": "5.1.6"
   },
   "dependencies": {
-    "aws-cdk-lib": "2.77.0",
-    "constructs": "10.2.13",
-    "esbuild": "0.17.18",
-    "source-map-support": "0.5.21"
+    "cdk-nag": "^2.27.100",
+    "@umccr/elsa-data-aws-application": "file:../../workload-elsa-data-aws"
   }
 }
