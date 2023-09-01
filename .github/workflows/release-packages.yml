@@ -33,7 +33,7 @@ jobs:
 
       # if all the builds have completed - we can publish the package
 
-      - run: npx publib-npm
+      - run: pnpm exec publib-npm
         working-directory: packages/aws-application
         env:
           NPM_TOKEN: ${{secrets.NPM_PUBLISH_TOKEN}}

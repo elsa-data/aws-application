@@ -26,6 +26,9 @@
     "outdir": "dist",
     "targets": {}
   },
+  "dependencies": {
+    "@elsa-data/aws-infrastructure-client": "^1.2.3"
+  },
   "peerDependencies": {
     "aws-cdk-lib": "^2.93.0",
     "constructs": "^10.2.70"
@@ -35,12 +38,9 @@
     "aws-cdk": "2.93.0",
     "aws-cdk-lib": "2.93.0",
     "@aws-cdk/aws-apprunner-alpha": "2.93.0-alpha.0",
-    "@elsa-data/aws-infrastructure-client": "1.2.3",
     "constructs": "10.2.70",
-    "esbuild": "0.19.2",
     "jsii": "5.1.12",
     "jsii-pacmak": "1.88.0",
-    "prettier": "3.0.3",
     "publib": "0.2.737",
     "typescript": "5.2.2"
   }
