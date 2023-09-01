@@ -1,0 +1,11 @@
+cdk.out/
+cdk.context.json
+
+**/*.js
+**/*.d.ts
+
+dist/**
+
+tsconfig.*
+
+.jsii

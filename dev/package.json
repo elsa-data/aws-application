@@ -1,0 +1,24 @@
+{
+  "name": "manual",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Manual deploy of the CDK Elsa Data workload for dev purposes",
+  "scripts": {
+    "deploy": "cdk --app 'npx ts-node dev.ts' deploy ElsaDataDevStack",
+    "destroy": "cdk --app 'npx ts-node dev.ts' destroy ElsaDataDevStack"
+  },
+  "devDependencies": {
+    "@tsconfig/node18": "1.0.3",
+    "@types/node": "18.17.12",
+    "aws-cdk": "2.93.0",
+    "aws-cdk-lib": "2.93.0",
+    "constructs": "10.2.70",
+    "prettier": "3.0.3",
+    "ts-node": "10.9.1",
+    "typescript": "5.2.2"
+  },
+  "dependencies": {
+    "cdk-nag": "^2.27.100",
+    "@elsa-data/aws-application": "link:../packages/aws-application"
+  }
+}

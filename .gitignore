@@ -107,7 +107,7 @@ dist
 .DS_Store
 
 cdk.out/
-/deploy/manual/cdk.context.json
+/dev/manual/cdk.context.json
 
 # The MaxMind Database
 *.mmdb

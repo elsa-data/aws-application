@@ -1,9 +1,0 @@
-{
-  dacs: [
-    {
-      id: "manual",
-      type: "manual",
-      description: "Manual",
-    },
-  ],
-}
