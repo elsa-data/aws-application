@@ -8,10 +8,14 @@
     {
       id: "redcap-ag-demo",
       type: "redcap-australian-genomics-csv",
-      description: "Australian Genomics Redcap Demo DAC",
-      identifierSystem: "https://redcap-demo.mcri.edu.au",
+      description: "Australian Genomics Redcap DAC",
+      identifierSystem: "https://redcap.mcri.edu.au",
+      identifierValueColumnHeader: "daf_num",
+      releaseKeyPrintf: "AGR%04d",
       csvFlagshipDatasets: {
-        daf_flagships_rd___1: "urn:example:elsa-data-demo-dataset-smartie",
+        // NOTE these are not the correct mappings (as per the real AG demo)
+        // but we hijack them here for dev purposes to point to 10F and 10G
+        daf_flagships_rd___1: "urn:fdc:umccr.org:2022:dataset/10f",
         // "daf_flagships_rd___2":
         // "daf_flagships_rd___3":
         // "daf_flagships_rd___4":
@@ -19,7 +23,7 @@
         // "daf_flagships_cancer___2",
         // "daf_flagships_cancer___3",
         // "daf_flagships_cancer___4"
-        daf_flagships_genpop___1: "urn:example:elsa-data-demo-dataset-blackjack",
+        daf_flagships_genpop___1: "urn:fdc:umccr.org:2022:dataset/10g",
       },
     },
   ],

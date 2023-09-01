@@ -27,13 +27,5 @@
       storageLocation: "aws-s3",
       storageUriPrefix: "s3://umccr-10c-data-dev",
     },
-    // The following is intentionally commented out to show variety of test-data that is not included in config file.
-    // {
-    //   name: "10M",
-    //   description: "UMCCR 10M",
-    //   uri: "urn:fdc:umccr.org:2022:dataset/10m",
-    //   storageLocation: "aws-s3",
-    //   storageUriPrefix: "s3://umccr-10m-data-dev",
-    // },
   ],
 }

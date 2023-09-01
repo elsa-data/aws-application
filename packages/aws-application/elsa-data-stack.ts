@@ -1,6 +1,6 @@
 import { ArnComponents, Stack, StackProps } from "aws-cdk-lib";
 import { Construct } from "constructs";
-import { ElsaDataApplicationConstruct } from "./elsa-data-application/elsa-data-application-construct";
+import { ElsaDataApplicationConstruct } from "./app/elsa-data-application-construct";
 import { ElsaDataStackSettings } from "./elsa-data-stack-settings";
 import { StringParameter } from "aws-cdk-lib/aws-ssm";
 import { Secret } from "aws-cdk-lib/aws-secretsmanager";

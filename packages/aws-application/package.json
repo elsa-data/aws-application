@@ -1,5 +1,5 @@
 {
-  "name": "@umccr/elsa-data-aws-application",
+  "name": "@elsa-data/aws-application",
   "version": "0.0.0",
   "description": "A CDK for creating the base Elsa Data application",
   "author": {
@@ -14,9 +14,9 @@
   },
   "license": "MIT",
   "scripts": {
-    "build": "jsii -vvv",
+    "build": "jsii -v",
     "build:watch": "jsii -w",
-    "package": "jsii-pacmak -vvv"
+    "package": "jsii-pacmak -v"
   },
   "keywords": [
     "jsii",
@@ -27,19 +27,19 @@
     "targets": {}
   },
   "peerDependencies": {
-    "aws-cdk-lib": "^2.91.0",
-    "constructs": "^10.2.69"
+    "aws-cdk-lib": "^2.93.0",
+    "constructs": "^10.2.70"
   },
   "devDependencies": {
-    "aws-cdk": "2.91.0",
-    "aws-cdk-lib": "2.91.0",
-    "@aws-cdk/aws-apprunner-alpha": "2.91.0-alpha.0",
-    "@umccr/elsa-data-aws-infrastructure-client": "1.1.0",
-    "constructs": "10.2.69",
-    "jsii": "5.1.10",
-    "jsii-pacmak": "1.86.1",
-    "prettier": "3.0.1",
+    "aws-cdk": "2.93.0",
+    "aws-cdk-lib": "2.93.0",
+    "@aws-cdk/aws-apprunner-alpha": "2.93.0-alpha.0",
+    "@elsa-data/aws-infrastructure-client": "1.2.3",
+    "constructs": "10.2.70",
+    "jsii": "5.1.12",
+    "jsii-pacmak": "1.88.0",
+    "prettier": "3.0.3",
     "publib": "0.2.737",
-    "typescript": "5.1.6"
+    "typescript": "5.2.2"
   }
 }

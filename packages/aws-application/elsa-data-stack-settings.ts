@@ -1,9 +1,9 @@
-import { ElsaDataApplicationSettings } from "./elsa-data-application/elsa-data-application-settings";
+import { ElsaDataApplicationSettings } from "./app/elsa-data-application-settings";
 export {
   ElsaDataApplicationSettings,
   ElsaDataApplicationBuildLocal,
   ElsaDataApplicationAwsPermissions,
-} from "./elsa-data-application/elsa-data-application-settings";
+} from "./app/elsa-data-application-settings";
 
 export interface ElsaDataStackSettings extends ElsaDataApplicationSettings {
   /**

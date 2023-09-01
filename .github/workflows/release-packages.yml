@@ -11,53 +11,30 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 18
-          cache: "npm"
-          cache-dependency-path: workload-elsa-data-aws/package-lock.json
+      - uses: pnpm/action-setup@v2
 
       - uses: actions/setup-node@v3
         with:
           node-version: 18
-          cache: "npm"
-          cache-dependency-path: client/package-lock.json
+          cache: "pnpm"
 
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 18
-          cache: "npm"
-          cache-dependency-path: stack/package-lock.json
+      - run: pnpm install
 
-      # the shared project is just some simple constants in JS that are shared
-      # they are not installed or published, but we install their packages if needed
-      - run: npm ci
-        working-directory: shared
+      # first set the versions of our package to the release version
 
-      # build the stack as a JSII package
+      - run: pnpm version ${{github.ref_name}}
+        working-directory: packages/aws-application
 
-      - run: npm ci
-        working-directory: stack
+      # build and package
 
-      - run: npm version ${{github.ref_name}}
-        working-directory: stack
+      - run: pnpm run build
 
-      - run: npm run build
-        working-directory: stack
+      - run: pnpm run package
 
-      - run: npm run package
-        working-directory: stack
-
-      # if all the builds have completed - we can publish the two packages
+      # if all the builds have completed - we can publish the package
 
       - run: npx publib-npm
-        working-directory: client
-        env:
-          NPM_TOKEN: ${{secrets.NPM_PUBLISH_TOKEN}}
-          NPM_ACCESS_LEVEL: public
-
-      - run: npx publib-npm
-        working-directory: stack
+        working-directory: packages/aws-application
         env:
           NPM_TOKEN: ${{secrets.NPM_PUBLISH_TOKEN}}
           NPM_ACCESS_LEVEL: public

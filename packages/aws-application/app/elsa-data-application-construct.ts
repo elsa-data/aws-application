@@ -12,12 +12,7 @@ import { DockerServiceWithHttpsLoadBalancerConstruct } from "../construct/docker
 import { Policy, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { ISecret } from "aws-cdk-lib/aws-secretsmanager";
 import { DockerImageCode, DockerImageFunction } from "aws-cdk-lib/aws-lambda";
-import {
-  ISecurityGroup,
-  IVpc,
-  SecurityGroup,
-  SubnetSelection,
-} from "aws-cdk-lib/aws-ec2";
+import { ISecurityGroup, IVpc, SubnetSelection } from "aws-cdk-lib/aws-ec2";
 import {
   Cluster,
   ContainerImage,
@@ -307,7 +302,10 @@ export class ElsaDataApplicationConstruct extends Construct {
       privateServiceWithLoadBalancer.cluster,
       privateServiceWithLoadBalancer.clusterLogGroup,
       privateServiceWithLoadBalancer.service.taskDefinition,
-      [privateServiceWithLoadBalancer.clusterSecurityGroup],
+      [
+        privateServiceWithLoadBalancer.clusterSecurityGroup,
+        props.edgeDbSecurityGroup,
+      ],
       props.accessSecretsPolicyStatement
     );
 
@@ -350,12 +348,12 @@ export class ElsaDataApplicationConstruct extends Construct {
     cluster: Cluster,
     clusterLogGroup: LogGroup,
     taskDefinition: TaskDefinition,
-    taskSecurityGroups: SecurityGroup[],
+    taskSecurityGroups: ISecurityGroup[],
     secretsPolicy: PolicyStatement
   ): DockerImageFunction {
     const dockerImageFolder = path.join(
       __dirname,
-      "../../artifacts/elsa-data-command-invoke-lambda-docker-image"
+      "../../../artifacts/elsa-data-command-invoke-lambda-docker-image"
     );
 
     // NOTE whilst we use the VPC information to communicate to the lambda
