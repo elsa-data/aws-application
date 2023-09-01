@@ -12,9 +12,10 @@ import { DockerServiceWithHttpsLoadBalancerConstruct } from "../construct/docker
 import { Policy, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { ISecret } from "aws-cdk-lib/aws-secretsmanager";
 import {
-  DockerImageCode,
-  DockerImageFunction,
+  //DockerImageCode,
+  //DockerImageFunction,
   Function,
+  Runtime,
 } from "aws-cdk-lib/aws-lambda";
 import { ISecurityGroup, IVpc, SubnetSelection } from "aws-cdk-lib/aws-ec2";
 import {
@@ -31,6 +32,7 @@ import { ElsaDataApplicationSettings } from "./elsa-data-application-settings";
 import { IBucket } from "aws-cdk-lib/aws-s3";
 // import {NodejsFunction} from "aws-cdk-lib/aws-lambda-nodejs";
 import * as path from "path";
+import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 
 interface Props extends ElsaDataApplicationSettings {
   readonly vpc: ec2.IVpc;
@@ -357,10 +359,16 @@ export class ElsaDataApplicationConstruct extends Construct {
     taskSecurityGroups: ISecurityGroup[],
     secretsPolicy: PolicyStatement
   ): Function {
-    /* const f = new NodejsFunction(this, 'api', {
-      entry: 'app/command-lambda/index.mjs',
+    const entry = path.join(__dirname, "./command-lambda/index.mjs");
+
+    const f = new NodejsFunction(this, "api", {
+      entry: entry,
       memorySize: 128,
       timeout: Duration.minutes(14),
+      // by specifying the precise runtime - the bundler knows exactly what packages are already in
+      // the base image - and for us can skip bundling @aws-sdk
+      // if we need to move this forward to node 18+ - then we may need to revisit this
+      runtime: Runtime.NODEJS_18_X,
       environment: {
         CLUSTER_ARN: cluster.clusterArn,
         CLUSTER_LOG_GROUP_NAME: clusterLogGroup.logGroupName,
@@ -369,17 +377,16 @@ export class ElsaDataApplicationConstruct extends Construct {
         // we are passing to the lambda the subnets and security groups that need to be used
         // by the Fargate task it will invoke
         SUBNETS: vpc
-            .selectSubnets(subnetSelection)
-            .subnets.map((s) => s.subnetId)
-            .join(",")!,
+          .selectSubnets(subnetSelection)
+          .subnets.map((s) => s.subnetId)
+          .join(",")!,
         SECURITY_GROUPS: taskSecurityGroups
-            .map((sg) => sg.securityGroupId)
-            .join(",")!,
+          .map((sg) => sg.securityGroupId)
+          .join(",")!,
       },
+    });
 
-    }); */
-
-    const dockerImageFolder = path.join(
+    /*const dockerImageFolder = path.join(
       __dirname,
       "../../../artifacts/elsa-data-command-invoke-lambda-docker-image"
     );
@@ -393,7 +400,7 @@ export class ElsaDataApplicationConstruct extends Construct {
     // a fargate task and then tracks that to completion - and returns the logs path
     // so it needs very little memory - but up to 14 mins runtime as sometimes the fargate
     // tasks are a bit slow
-    const f = new DockerImageFunction(this, "CommandLambda", {
+    const f2 = new DockerImageFunction(this, "CommandLambda", {
       memorySize: 128,
       code: DockerImageCode.fromImageAsset(dockerImageFolder),
       timeout: Duration.minutes(14),
@@ -412,7 +419,7 @@ export class ElsaDataApplicationConstruct extends Construct {
           .map((sg) => sg.securityGroupId)
           .join(",")!,
       },
-    });
+    });*/
 
     f.role?.attachInlinePolicy(
       new Policy(this, "CommandTasksPolicy", {
