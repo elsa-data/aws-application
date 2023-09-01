@@ -46,13 +46,14 @@ importers:
         version: 5.2.2
 
   packages/aws-application:
+    dependencies:
+      "@elsa-data/aws-infrastructure-client":
+        specifier: ^1.2.3
+        version: 1.2.3(aws-cdk-lib@2.93.0)(constructs@10.2.70)
     devDependencies:
       "@aws-cdk/aws-apprunner-alpha":
         specifier: 2.93.0-alpha.0
         version: 2.93.0-alpha.0(aws-cdk-lib@2.93.0)(constructs@10.2.70)
-      "@elsa-data/aws-infrastructure-client":
-        specifier: 1.2.3
-        version: 1.2.3(aws-cdk-lib@2.93.0)(constructs@10.2.70)
       "@types/node":
         specifier: 18.15.3
         version: 18.15.3
@@ -740,7 +741,7 @@ packages:
       aws-cdk-lib: 2.93.0(constructs@10.2.70)
       constructs: 10.2.70
       shared: link:../shared
-    dev: true
+    dev: false
     bundledDependencies:
       - shared
 
