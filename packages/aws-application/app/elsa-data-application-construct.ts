@@ -361,7 +361,7 @@ export class ElsaDataApplicationConstruct extends Construct {
   ): Function {
     const entry = path.join(__dirname, "./command-lambda/index.mjs");
 
-    const f = new NodejsFunction(this, "api", {
+    const f = new NodejsFunction(this, "CommandLambda", {
       entry: entry,
       memorySize: 128,
       timeout: Duration.minutes(14),
@@ -385,41 +385,6 @@ export class ElsaDataApplicationConstruct extends Construct {
           .join(",")!,
       },
     });
-
-    /*const dockerImageFolder = path.join(
-      __dirname,
-      "../../../artifacts/elsa-data-command-invoke-lambda-docker-image"
-    );
-
-    // NOTE whilst we use the VPC information to communicate to the lambda
-    // how to execute fargate Tasks - the lambda itself *is not* put inside the VPC
-    // (it was taking ages to tear down the CDK stack - and it didn't feel necessary
-    //  as it doesn't talk to the databases or anything)
-
-    // this command lambda does almost nothing itself - all it does is trigger the creation of
-    // a fargate task and then tracks that to completion - and returns the logs path
-    // so it needs very little memory - but up to 14 mins runtime as sometimes the fargate
-    // tasks are a bit slow
-    const f2 = new DockerImageFunction(this, "CommandLambda", {
-      memorySize: 128,
-      code: DockerImageCode.fromImageAsset(dockerImageFolder),
-      timeout: Duration.minutes(14),
-      environment: {
-        CLUSTER_ARN: cluster.clusterArn,
-        CLUSTER_LOG_GROUP_NAME: clusterLogGroup.logGroupName,
-        TASK_DEFINITION_ARN: taskDefinition.taskDefinitionArn,
-        CONTAINER_NAME: FIXED_CONTAINER_NAME,
-        // we are passing to the lambda the subnets and security groups that need to be used
-        // by the Fargate task it will invoke
-        SUBNETS: vpc
-          .selectSubnets(subnetSelection)
-          .subnets.map((s) => s.subnetId)
-          .join(",")!,
-        SECURITY_GROUPS: taskSecurityGroups
-          .map((sg) => sg.securityGroupId)
-          .join(",")!,
-      },
-    });*/
 
     f.role?.attachInlinePolicy(
       new Policy(this, "CommandTasksPolicy", {

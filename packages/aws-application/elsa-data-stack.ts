@@ -5,7 +5,7 @@ import { ElsaDataStackSettings } from "./elsa-data-stack-settings";
 import { StringParameter } from "aws-cdk-lib/aws-ssm";
 import { Secret } from "aws-cdk-lib/aws-secretsmanager";
 import { Bucket } from "aws-cdk-lib/aws-s3";
-import { ElsaDataInfrastructureClient } from "@umccr/elsa-data-aws-infrastructure-client";
+import { InfrastructureClient } from "@elsa-data/aws-infrastructure-client";
 
 export {
   ElsaDataStackSettings,
@@ -55,7 +55,7 @@ export class ElsaDataStack extends Stack {
       return returnLookupValue;
     };
 
-    const infraClient = new ElsaDataInfrastructureClient(
+    const infraClient = new InfrastructureClient(
       applicationProps.infrastructureStackName
     );
 
