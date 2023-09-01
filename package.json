@@ -15,5 +15,8 @@
     "name": "University of Melbourne Centre for Cancer Research",
     "organization": true
   },
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "esbuild": "0.19.2"
+  }
 }

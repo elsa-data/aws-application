@@ -6,12 +6,16 @@ import {
   Stack,
 } from "aws-cdk-lib";
 import { Construct } from "constructs";
-import * as path from "path";
+// import * as path from "path";
 import { DockerImageAsset, Platform } from "aws-cdk-lib/aws-ecr-assets";
 import { DockerServiceWithHttpsLoadBalancerConstruct } from "../construct/docker-service-with-https-load-balancer-construct";
 import { Policy, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { ISecret } from "aws-cdk-lib/aws-secretsmanager";
-import { DockerImageCode, DockerImageFunction } from "aws-cdk-lib/aws-lambda";
+import {
+  DockerImageCode,
+  DockerImageFunction,
+  Function,
+} from "aws-cdk-lib/aws-lambda";
 import { ISecurityGroup, IVpc, SubnetSelection } from "aws-cdk-lib/aws-ec2";
 import {
   Cluster,
@@ -25,6 +29,8 @@ import { IHostedZone } from "aws-cdk-lib/aws-route53";
 import { ICertificate } from "aws-cdk-lib/aws-certificatemanager";
 import { ElsaDataApplicationSettings } from "./elsa-data-application-settings";
 import { IBucket } from "aws-cdk-lib/aws-s3";
+// import {NodejsFunction} from "aws-cdk-lib/aws-lambda-nodejs";
+import * as path from "path";
 
 interface Props extends ElsaDataApplicationSettings {
   readonly vpc: ec2.IVpc;
@@ -350,7 +356,29 @@ export class ElsaDataApplicationConstruct extends Construct {
     taskDefinition: TaskDefinition,
     taskSecurityGroups: ISecurityGroup[],
     secretsPolicy: PolicyStatement
-  ): DockerImageFunction {
+  ): Function {
+    /* const f = new NodejsFunction(this, 'api', {
+      entry: 'app/command-lambda/index.mjs',
+      memorySize: 128,
+      timeout: Duration.minutes(14),
+      environment: {
+        CLUSTER_ARN: cluster.clusterArn,
+        CLUSTER_LOG_GROUP_NAME: clusterLogGroup.logGroupName,
+        TASK_DEFINITION_ARN: taskDefinition.taskDefinitionArn,
+        CONTAINER_NAME: FIXED_CONTAINER_NAME,
+        // we are passing to the lambda the subnets and security groups that need to be used
+        // by the Fargate task it will invoke
+        SUBNETS: vpc
+            .selectSubnets(subnetSelection)
+            .subnets.map((s) => s.subnetId)
+            .join(",")!,
+        SECURITY_GROUPS: taskSecurityGroups
+            .map((sg) => sg.securityGroupId)
+            .join(",")!,
+      },
+
+    }); */
+
     const dockerImageFolder = path.join(
       __dirname,
       "../../../artifacts/elsa-data-command-invoke-lambda-docker-image"
