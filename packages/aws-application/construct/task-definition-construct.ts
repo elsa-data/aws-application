@@ -1,7 +1,5 @@
 import { Construct } from "constructs";
-import { ISecurityGroup } from "aws-cdk-lib/aws-ec2";
 import {
-  ContainerImage,
   CpuArchitecture,
   FargateTaskDefinition,
   LogDrivers,
@@ -9,32 +7,32 @@ import {
   Secret,
 } from "aws-cdk-lib/aws-ecs";
 import { ClusterConstruct } from "./cluster-construct";
+import { ContainerConstruct } from "./container-construct";
 
 type Props = {
-  cluster: ClusterConstruct;
+  // the cluster the task will run in
+  readonly cluster: ClusterConstruct;
 
-  // any security groups to place the cloudMapService in - alongside a security group we will ourselves construct
-  securityGroups: ISecurityGroup[];
-
-  // the Docker image to run as the cloudMapService
-  containerImage: ContainerImage;
+  // the container the task will consist of
+  readonly container: ContainerConstruct;
 
   // env variables to pass to the Docker image
-  environment: { [p: string]: string };
+  readonly environment: { [p: string]: string };
 
-  // secrets that can be expanded out in the environment on spin up (hidden from AWS console) NOTE: ecs Secrets, not Secret Manager secrets
-  secrets: { [p: string]: Secret };
+  // secrets that can be expanded out in the environment on spin
+  // up (hidden from AWS console) NOTE: ecs Secrets, not Secret Manager secrets
+  readonly secrets: { [p: string]: Secret };
 
-  // details of the fargate
-  memoryLimitMiB: number;
-  cpu: number;
-  cpuArchitecture: CpuArchitecture;
-  containerName: string;
-  logStreamPrefix: string;
+  // details of the fargate task
+  readonly memoryLimitMiB: number;
+  readonly cpu: number;
+  readonly cpuArchitecture: CpuArchitecture;
+
+  readonly logStreamPrefix: string;
 };
 
 /**
- * Creates a Docker based cloudMapService in Fargate fronted by a SSL load balancer.
+ * A construct for a TaskDefinition that can run our Elsa Data container.
  */
 export class TaskDefinitionConstruct extends Construct {
   public readonly taskDefinition: FargateTaskDefinition;
@@ -56,18 +54,20 @@ export class TaskDefinitionConstruct extends Construct {
       // family: taskImageOptions.family,
     });
 
-    const containerName = props.containerName;
-    const container = this.taskDefinition.addContainer(containerName, {
-      image: props.containerImage,
-      cpu: props.cpu,
-      memoryLimitMiB: props.memoryLimitMiB,
-      environment: props.environment,
-      secrets: props.secrets,
-      logging: LogDrivers.awsLogs({
-        streamPrefix: props.logStreamPrefix,
-        logGroup: props.cluster.clusterLogGroup,
-      }),
-    });
+    const container = this.taskDefinition.addContainer(
+      props.container.containerName,
+      {
+        image: props.container.containerImage,
+        cpu: props.cpu,
+        memoryLimitMiB: props.memoryLimitMiB,
+        environment: props.environment,
+        secrets: props.secrets,
+        logging: LogDrivers.awsLogs({
+          streamPrefix: props.logStreamPrefix,
+          logGroup: props.cluster.clusterLogGroup,
+        }),
+      }
+    );
     container.addPortMappings({
       containerPort: 80,
     });

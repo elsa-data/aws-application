@@ -17,5 +17,5 @@ export interface ElsaDataStackSettings extends ElsaDataApplicationSettings {
    * set in our infrastructure stack - it may not match any actual AWS resource name. See
    * the output SSM of the infrastructure stack to see what databases are exported.
    */
-  readonly infrastructureDatabaseName: string;
+  readonly infrastructureDatabaseInstanceName: string;
 }

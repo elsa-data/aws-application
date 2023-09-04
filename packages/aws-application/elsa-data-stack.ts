@@ -80,19 +80,19 @@ export class ElsaDataStack extends Stack {
 
     const edgeDbSecurityGroup = infraClient.getEdgeDbSecurityGroupFromLookup(
       this,
-      applicationProps.infrastructureDatabaseName
+      applicationProps.infrastructureDatabaseInstanceName
     );
 
     const edgeDbDnsNoPassword = StringParameter.valueFromLookup(
       this,
-      `/${applicationProps.infrastructureStackName}/Database/${applicationProps.infrastructureDatabaseName}/EdgeDb/dsnNoPasswordOrDatabase`
+      `/${applicationProps.infrastructureStackName}/Database/${applicationProps.infrastructureDatabaseInstanceName}/EdgeDb/dsnNoPasswordOrDatabase`
     );
 
     const edgeDbAdminPasswordSecret = Secret.fromSecretCompleteArn(
       this,
       "AdminSecret",
       delayedArnLookupHelper(
-        `/${applicationProps.infrastructureStackName}/Database/${applicationProps.infrastructureDatabaseName}/EdgeDb/adminPasswordSecretArn`,
+        `/${applicationProps.infrastructureStackName}/Database/${applicationProps.infrastructureDatabaseInstanceName}/EdgeDb/adminPasswordSecretArn`,
         {
           service: "secretsmanager",
           resource: "secret",
@@ -114,13 +114,13 @@ export class ElsaDataStack extends Stack {
     );
 
     // the Elsa Data container is a shared bundling up of the Elsa Data image
-    const container = new ContainerConstruct(this, "ElsaDataContainer", {
+    const container = new ContainerConstruct(this, "Container", {
       buildLocal: applicationProps.buildLocal,
       imageBaseName: applicationProps.imageBaseName,
     });
 
     // the cluster is a shared location to run the Elsa Data containers on
-    const cluster = new ClusterConstruct(this, "ElsaDataCluster", {
+    const cluster = new ClusterConstruct(this, "Cluster", {
       vpc: vpc,
       logRetention: RetentionDays.ONE_MONTH,
     });
@@ -138,11 +138,11 @@ export class ElsaDataStack extends Stack {
     const makeEnvironment = (): { [p: string]: string } => ({
       // we have a DSN that has no password or database name
       EDGEDB_DSN: edgeDbDnsNoPassword,
-      // we can choose the database name ourselves or default
+      // we can choose the database name ourselves or default it to something sensible
       EDGEDB_DATABASE: applicationProps.databaseName ?? "edgedb",
       // we don't do EdgeDb certs (our EdgeDb has made self-signed certs) so we must set this
       EDGEDB_CLIENT_TLS_SECURITY: "insecure",
-      // environment variables set to setup the meta system for Elsa configuration
+      // environment variables set to set up the meta system for Elsa configuration
       ELSA_DATA_META_CONFIG_FOLDERS:
         applicationProps.metaConfigFolders || "./config",
       ELSA_DATA_META_CONFIG_SOURCES: applicationProps.metaConfigSources,
@@ -154,7 +154,7 @@ export class ElsaDataStack extends Stack {
       ELSA_DATA_CONFIG_SERVICE_DISCOVERY_NAMESPACE:
         cloudMapService.namespace.namespaceName,
       // only in development are we likely to be using an image that is not immutable
-      // i.e. dev we might use "latest".. but in production we should be using "1.0.1" for example
+      // i.e. dev we might use "latest"... but in production we should be using "1.0.1" for example
       //  props.isDevelopment ? "default" : "once",
       // until we have everything working - lets leave it at default
       ECS_IMAGE_PULL_BEHAVIOR: "default",
@@ -166,12 +166,9 @@ export class ElsaDataStack extends Stack {
 
     const appDef = new TaskDefinitionConstruct(this, "AppDef", {
       cluster: cluster,
-      // we need to at least be placed in the EdgeDb security group so that in production we can access EdgeDb
-      securityGroups: [edgeDbSecurityGroup],
+      container: container,
       memoryLimitMiB: applicationProps.memoryLimitMiB ?? 2048,
       cpu: applicationProps.cpu ?? 1024,
-      containerImage: container.containerImage,
-      containerName: container.containerName,
       environment: makeEnvironment(),
       secrets: makeSecrets(),
       cpuArchitecture: CpuArchitecture.X86_64,
@@ -196,14 +193,11 @@ export class ElsaDataStack extends Stack {
 
     const appCommandDef = new TaskDefinitionConstruct(this, "AppCommandDef", {
       cluster: cluster,
-      // we need to at least be placed in the EdgeDb security group so that in production we can access EdgeDb
-      securityGroups: [edgeDbSecurityGroup],
+      container: container,
       // for app commands we definitely need less CPU (we don't really care how long the commands take)
       // and we will see whether we can get away with less memory (we won't be spinning up a web server for instance)
       memoryLimitMiB: 1024,
       cpu: 512,
-      containerImage: container.containerImage,
-      containerName: container.containerName,
       environment: makeEnvironment(),
       secrets: makeSecrets(),
       cpuArchitecture: CpuArchitecture.X86_64,
