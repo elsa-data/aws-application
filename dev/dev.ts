@@ -57,7 +57,7 @@ new ElsaDataStack(
       folder: join(__dirname, "dev-docker-image"),
     },
     metaConfigSources:
-      "file('base') file('admins') file('datasets') file('dacs') aws-secret('ElsaDataDevDeployed')",
+      "file('base') file('admins') file('datasets') file('sharers') file('dacs') aws-secret('ElsaDataDevDeployed')",
     metaConfigFolders: "/dev-config",
     awsPermissions: {
       dataBucketPaths: {
