@@ -1,6 +1,19 @@
 # Elsa Data (AWS Deploy)
 
-CDK stacks for deploying Elsa Data.
+A CDK stack for deploying the core Elsa Data application
+into infrastructure.
+
+## Dev
+
+IF EDITING ANYTHING OTHER THAN THE DEV DEPLOYMENT
+YOU MUST BE COMPILING THE CDK PACKAGES.
+
+`pnpm watch`
+
+in a window - will sit and recompile all package changes.
+
+These can then be deployed to dev in the dev folder with
+normal CDK operations.
 
 ## AWS Deploy (As Built)
 
@@ -20,8 +33,3 @@ the desired admin command. _IT MUST BE INVOKED IN THE ACCOUNT OF THE DEPLOYMENT_
 whereas all other build/deployment is controlled by CDK Pipelines rooted in the Build
 account - the maintenance utility must be run from an AWS environment logged into the deployment
 account (either Dev or Prod).
-
-## Usage
-
-To deploy stack, run `npx cdk deploy` in one of the deploy folders. When deploying for the first time, a migration
-might be required to update the database. This can be done by running `./elsa-data-cmd.sh db-migrate`.

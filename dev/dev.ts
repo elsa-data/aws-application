@@ -28,7 +28,7 @@ const descriptionWithTag = (tag?: string) =>
 
 // bring this out to the top as it is the type of thing we might want to change during dev
 // to point to other PR branches etc
-const DEV_DEPLOYED_IMAGE_TAG = "0.3.0";
+const DEV_DEPLOYED_IMAGE_TAG = "pr-468";
 
 /**
  * Stack for dev
@@ -49,15 +49,16 @@ new ElsaDataStack(
   },
   {
     infrastructureStackName: "ElsaDataDevInfrastructureStack",
-    infrastructureDatabaseName: "elsa_data_serverless_database",
+    infrastructureDatabaseInstanceName: "elsa_data_serverless_database",
+    isDevelopment: true,
     urlPrefix: "elsa-data",
     // this image gets inserted as the base of the new image being built via buildLocal
-    imageBaseName: `ghcr.io/umccr/elsa-data:${DEV_DEPLOYED_IMAGE_TAG}`,
+    imageBaseName: `ghcr.io/elsa-data/elsa-data:${DEV_DEPLOYED_IMAGE_TAG}`,
     buildLocal: {
       folder: join(__dirname, "dev-docker-image"),
     },
     metaConfigSources:
-      "file('base') file('admins') file('datasets') file('dacs') aws-secret('ElsaDataDevDeployed')",
+      "file('base') file('admins') file('datasets') file('sharers') file('dacs') aws-secret('ElsaDataDevDeployed')",
     metaConfigFolders: "/dev-config",
     awsPermissions: {
       dataBucketPaths: {
@@ -67,5 +68,6 @@ new ElsaDataStack(
       },
       enableAccessPoints: true,
     },
+    databaseName: "elsa_data",
   }
 );

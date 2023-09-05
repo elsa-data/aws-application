@@ -6,6 +6,15 @@
       description: "Manual",
     },
     {
+      id: "rems-hgpp",
+      type: "rems",
+      description: "REMS HGPP (demo)",
+      url: "https://hgpp-rems.dev.umccr.org",
+      // the bot keys will be set via our relevant secret mechanism
+      botUser: "will-be-replaced",
+      botKey: "will-be-replaced",
+    },
+    {
       id: "redcap-ag-demo",
       type: "redcap-australian-genomics-csv",
       description: "Australian Genomics Redcap DAC",

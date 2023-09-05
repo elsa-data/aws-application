@@ -17,7 +17,7 @@ import { ISecret } from "aws-cdk-lib/aws-secretsmanager";
 import { Service } from "aws-cdk-lib/aws-servicediscovery";
 import { IHostedZone } from "aws-cdk-lib/aws-route53";
 import { ICertificate } from "aws-cdk-lib/aws-certificatemanager";
-import { ElsaDataApplicationSettings } from "./elsa-data-application-settings";
+import { ElsaDataApplicationSettings } from "../elsa-data-application-settings";
 import * as apprunner from "@aws-cdk/aws-apprunner-alpha";
 
 //
