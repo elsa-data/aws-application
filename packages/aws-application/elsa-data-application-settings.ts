@@ -1,5 +1,5 @@
 /**
- * The user settable settings for the Elsa Data application cloudMapService.
+ * The user settable settings for the Elsa Data application service.
  */
 export interface ElsaDataApplicationSettings {
   /**
@@ -55,7 +55,7 @@ export interface ElsaDataApplicationSettings {
   readonly metaConfigSources: string;
 
   /**
-   * Policy permissions need to be given to the container cloudMapService
+   * Policy permissions need to be given to the container service
    * and this section helps define them (some of these values
    * would be derivable from the Elsa configuration but it is not
    * available at this point in deployment)
@@ -78,7 +78,7 @@ export interface ElsaDataApplicationSettings {
   readonly cpu?: number;
 
   /**
-   * If present, an alternative CloudMap cloudMapService name for the application - defaults to Application
+   * If present, an alternative CloudMapService name for the application - defaults to Application
    */
   readonly serviceName?: string;
 }
@@ -99,7 +99,7 @@ export interface ElsaDataApplicationAwsPermissions {
   /**
    * Bucket paths. For each bucket shared by this Elsa Data, we list
    * the Keys within that bucket as wildcards. This goes to setting the precise S3
-   * read permissions for the Elsa cloudMapService.
+   * read permissions for the Elsa Data service.
    * e.g.
    *  {
    *    "my-bucket": [ "Cardiac2022/*", "Mito/*manifest.txt" ]
