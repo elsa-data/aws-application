@@ -1,16 +1,7 @@
-import {
-  ArnComponents,
-  aws_ecs as ecs,
-  CfnOutput,
-  Stack,
-  StackProps,
-} from "aws-cdk-lib";
+import { aws_ecs as ecs, CfnOutput, Stack, StackProps } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import { ElsaDataApplicationConstruct } from "./app/elsa-data-application-construct";
 import { ElsaDataStackSettings } from "./elsa-data-stack-settings";
-import { StringParameter } from "aws-cdk-lib/aws-ssm";
-import { Secret } from "aws-cdk-lib/aws-secretsmanager";
-import { Bucket } from "aws-cdk-lib/aws-s3";
 import { InfrastructureClient } from "@elsa-data/aws-infrastructure-client";
 import { ElsaDataApplicationCommandConstruct } from "./app-command/elsa-data-application-command-construct";
 import { ClusterConstruct } from "./construct/cluster-construct";
@@ -39,35 +30,8 @@ export class ElsaDataStack extends Stack {
   ) {
     super(scope, id, props);
 
-    /**
-     * Workaround for a problem with CDK that on initial pass the values of a valueFromLookup
-     * are not valid ARNS - which then causes other code to fail - even though eventually the
-     * value *will* be a real ARN.
-     *
-     * See https://github.com/josephedward/aws-cdk/commit/33030e0c2bb46fa909540bff6ae0153d48abc9c2
-     *
-     * @param parameterName
-     * @param dummyComponents
-     */
-    const delayedArnLookupHelper = (
-      parameterName: string,
-      dummyComponents: ArnComponents
-    ): string => {
-      // attempt to get the value from CDK - this might be a dummy value however
-      const lookupValue = StringParameter.valueFromLookup(this, parameterName);
-
-      let returnLookupValue: string;
-      if (lookupValue.includes("dummy-value")) {
-        // if dummy value - need to return a plausible ARN
-        returnLookupValue = this.formatArn(dummyComponents);
-      } else {
-        // else eventually return the real value
-        returnLookupValue = lookupValue;
-      }
-
-      return returnLookupValue;
-    };
-
+    // our client unlocks the ability to fetch/create CDK objects that match our
+    // installed infrastructure stack (by infrastructure stack name)
     const infraClient = new InfrastructureClient(
       applicationProps.infrastructureStackName
     );
@@ -83,35 +47,19 @@ export class ElsaDataStack extends Stack {
       applicationProps.infrastructureDatabaseInstanceName
     );
 
-    const edgeDbDnsNoPassword = StringParameter.valueFromLookup(
-      this,
-      `/${applicationProps.infrastructureStackName}/Database/${applicationProps.infrastructureDatabaseInstanceName}/EdgeDb/dsnNoPasswordOrDatabase`
-    );
+    const edgeDbDsnNoPasswordOrDatabase =
+      infraClient.getEdgeDbDsnNoPasswordOrDatabaseFromLookup(
+        this,
+        applicationProps.infrastructureDatabaseInstanceName
+      );
 
-    const edgeDbAdminPasswordSecret = Secret.fromSecretCompleteArn(
-      this,
-      "AdminSecret",
-      delayedArnLookupHelper(
-        `/${applicationProps.infrastructureStackName}/Database/${applicationProps.infrastructureDatabaseInstanceName}/EdgeDb/adminPasswordSecretArn`,
-        {
-          service: "secretsmanager",
-          resource: "secret",
-          resourceName: "adminPasswordSecretThoughThisIsNotReal",
-        }
-      )
-    );
+    const edgeDbAdminPasswordSecret =
+      infraClient.getEdgeDbAdminPasswordSecretFromLookup(
+        this,
+        applicationProps.infrastructureDatabaseInstanceName
+      );
 
-    const tempBucket = Bucket.fromBucketArn(
-      this,
-      "TempBucket",
-      delayedArnLookupHelper(
-        `/${applicationProps.infrastructureStackName}/TempPrivateBucket/bucketArn`,
-        {
-          service: "s3",
-          resource: "a-bucket-name-though-this-is-not-real",
-        }
-      )
-    );
+    const tempBucket = infraClient.getTempBucketFromLookup(this);
 
     // the Elsa Data container is a shared bundling up of the Elsa Data image
     const container = new ContainerConstruct(this, "Container", {
@@ -135,11 +83,18 @@ export class ElsaDataStack extends Stack {
 
     const deployedUrl = `https://${applicationProps.urlPrefix}.${hostedZone.zoneName}`;
 
+    if (applicationProps.databaseName === "edgedb")
+      throw new Error(
+        "Database name cannot be 'edgedb' as that is reserved for other uses"
+      );
+
     const makeEnvironment = (): { [p: string]: string } => ({
+      // deploy as development only if indicated
+      NODE_ENV: applicationProps.isDevelopment ? "development" : "production",
       // we have a DSN that has no password or database name
-      EDGEDB_DSN: edgeDbDnsNoPassword,
+      EDGEDB_DSN: edgeDbDsnNoPasswordOrDatabase,
       // we can choose the database name ourselves or default it to something sensible
-      EDGEDB_DATABASE: applicationProps.databaseName ?? "edgedb",
+      EDGEDB_DATABASE: applicationProps.databaseName ?? "elsa_data",
       // we don't do EdgeDb certs (our EdgeDb has made self-signed certs) so we must set this
       EDGEDB_CLIENT_TLS_SECURITY: "insecure",
       // environment variables set to set up the meta system for Elsa configuration

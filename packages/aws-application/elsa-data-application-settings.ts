@@ -3,6 +3,14 @@
  */
 export interface ElsaDataApplicationSettings {
   /**
+   * If present and true, declares this installation of the application to be development
+   * level, and therefore removes some guard rails and checks. That is, certain
+   * destructive operations like wiping the database can be performed without checks
+   * if isDevelopment is true.
+   */
+  readonly isDevelopment?: boolean;
+
+  /**
    * The URL prefix (name before first dot in hostname).
    * This is something that is expected to be different per deployment (e.g. "elsa", "elsa-demo").
    * It is required as it forms part of the deployed Elsa Data URL.
@@ -26,6 +34,12 @@ export interface ElsaDataApplicationSettings {
    * setup. See also `buildLocal.folder`.
    */
   readonly imageBaseName: string;
+
+  /**
+   * The name of the database in our database instance - defaults to
+   * something sensible if not present.
+   */
+  readonly databaseName?: string;
 
   /**
    * For the above Docker images - we can add configuration files/folders
@@ -67,11 +81,6 @@ export interface ElsaDataApplicationSettings {
    * If present, an alternative CloudMap cloudMapService name for the application - defaults to Application
    */
   readonly serviceName?: string;
-
-  /**
-   * If present, an alternative edgedb database name for the application - defaults to something sensible
-   */
-  readonly databaseName?: string;
 }
 
 export interface ElsaDataApplicationBuildLocal {

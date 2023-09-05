@@ -10,7 +10,7 @@
   "types": "elsa-data-stack.d.ts",
   "repository": {
     "type": "git",
-    "url": "https://github.com/umccr/elsa-data-aws-application"
+    "url": "https://github.com/elsa-data/aws-application"
   },
   "license": "MIT",
   "scripts": {
@@ -27,7 +27,7 @@
     "targets": {}
   },
   "dependencies": {
-    "@elsa-data/aws-infrastructure-client": "^1.2.3"
+    "@elsa-data/aws-infrastructure-client": "1.2.4"
   },
   "peerDependencies": {
     "aws-cdk-lib": "^2.93.0",

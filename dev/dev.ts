@@ -28,7 +28,7 @@ const descriptionWithTag = (tag?: string) =>
 
 // bring this out to the top as it is the type of thing we might want to change during dev
 // to point to other PR branches etc
-const DEV_DEPLOYED_IMAGE_TAG = "0.4.0";
+const DEV_DEPLOYED_IMAGE_TAG = "pr-468";
 
 /**
  * Stack for dev
@@ -50,6 +50,7 @@ new ElsaDataStack(
   {
     infrastructureStackName: "ElsaDataDevInfrastructureStack",
     infrastructureDatabaseInstanceName: "elsa_data_serverless_database",
+    isDevelopment: true,
     urlPrefix: "elsa-data",
     // this image gets inserted as the base of the new image being built via buildLocal
     imageBaseName: `ghcr.io/elsa-data/elsa-data:${DEV_DEPLOYED_IMAGE_TAG}`,
@@ -67,6 +68,6 @@ new ElsaDataStack(
       },
       enableAccessPoints: true,
     },
-    databaseName: "elsa040",
+    databaseName: "elsa_data",
   }
 );
