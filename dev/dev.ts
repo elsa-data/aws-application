@@ -15,12 +15,6 @@ const app = new cdk.App();
 // Aspects.of(app).add(new HIPAASecurityChecks({ verbose: true }));
 // Aspects.of(app).add(new NIST80053R5Checks({ verbose: true }));
 
-// tags for our stacks
-const tags = {
-  "umccr-org:Stack": "ElsaDataApplication",
-  "umccr-org:Product": "ElsaData",
-};
-
 const descriptionWithTag = (tag?: string) =>
   `Application for Elsa Data ${
     tag ? "(" + tag + ") " : ""
@@ -28,7 +22,7 @@ const descriptionWithTag = (tag?: string) =>
 
 // bring this out to the top as it is the type of thing we might want to change during dev
 // to point to other PR branches etc
-const DEV_DEPLOYED_IMAGE_TAG = "pr-468";
+const DEV_DEPLOYED_IMAGE_TAG = "0.4.1";
 
 /**
  * Stack for dev
@@ -44,7 +38,8 @@ new ElsaDataStack(
     description: descriptionWithTag(undefined),
     tags: {
       "umccr-org:ProductVersion": DEV_DEPLOYED_IMAGE_TAG,
-      ...tags,
+      "umccr-org:Stack": "ElsaDataApplication",
+      "umccr-org:Product": "ElsaData",
     },
   },
   {

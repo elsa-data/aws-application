@@ -12,6 +12,7 @@ import { ClusterConstruct } from "../construct/cluster-construct";
 import { ContainerConstruct } from "../construct/container-construct";
 import { TaskDefinitionConstruct } from "../construct/task-definition-construct";
 import { FargateService } from "aws-cdk-lib/aws-ecs";
+import { getPolicyStatementsFromDataBucketPaths } from "../helper/bucket-names-to-policy";
 
 interface Props extends ElsaDataApplicationSettings {
   readonly cluster: ClusterConstruct;
@@ -28,15 +29,18 @@ interface Props extends ElsaDataApplicationSettings {
   // the security group of our edgedb - that we will put ourselves in to enable access
   readonly edgeDbSecurityGroup: ISecurityGroup;
 
-  // a policy statement that we need to add to our running cloudMapService in order to give us access to the secrets
+  // a policy statement that we need to add to our app service in order to give us access to the secrets
   readonly accessSecretsPolicyStatement: PolicyStatement;
+
+  // a policy statement that we need to add to our app service in order to discover other services via cloud map
+  readonly discoverServicesPolicyStatement: PolicyStatement;
 
   // an already created temp bucket we can use
   readonly tempBucket: IBucket;
 }
 
 /**
- * A construct that deploys Elsa Data as a Fargate cloudMapService.
+ * A construct that deploys Elsa Data as a Fargate service.
  */
 export class ElsaDataApplicationConstruct extends Construct {
   private readonly privateServiceWithLoadBalancer: DockerServiceWithHttpsLoadBalancerConstruct;
@@ -63,33 +67,28 @@ export class ElsaDataApplicationConstruct extends Construct {
 
     const policy = new Policy(this, "FargateServiceTaskPolicy");
 
-    // need to be able to fetch secrets - we wildcard to every Secret that has our designated prefix of elsa*
+    // need to be able to fetch secrets but the infrastructure can give us a wildcard
+    // policy statement that does that
     policy.addStatements(props.accessSecretsPolicyStatement);
 
-    // restrict our Get operations to a very specific set of keys in the named buckets
-    // NOTE: our 'signing' is always done by a different user so this is not the only
-    // permission that has to be set correctly
-    for (const [bucketName, keyWildcards] of Object.entries(
-      props.awsPermissions.dataBucketPaths
-    )) {
-      policy.addStatements(
-        new PolicyStatement({
-          actions: ["s3:GetObject"],
-          // NOTE: we could consider restricting to region or account here in constructing the ARNS
-          // but given the bucket names are already globally specific we leave them open
-          resources: keyWildcards.map(
-            (k) => `arn:${Stack.of(this).partition}:s3:::${bucketName}/${k}`
-          ),
-        })
-      );
-    }
+    // need to be able to discover instances in the cloud map namespace - and our
+    // infrastructure can give us a policy statement to enable that
+    policy.addStatements(props.discoverServicesPolicyStatement);
 
+    // we (currently) give the application access to all the data bucket objects
+    // TODO consider subsetting even this permissions (only manifests??)
+    policy.addStatements(
+      ...getPolicyStatementsFromDataBucketPaths(
+        Stack.of(this).partition,
+        props.awsPermissions.dataBucketPaths
+      )
+    );
+
+    // allow cloudtrail queries to get data egress records
     policy.addStatements(
       new PolicyStatement({
-        actions: ["s3:ListBucket"],
-        resources: Object.keys(props.awsPermissions.dataBucketPaths).map(
-          (b) => `arn:${Stack.of(this).partition}:s3:::${b}`
-        ),
+        actions: ["cloudtrail:StartQuery", "cloudtrail:GetQueryResults"],
+        resources: ["*"],
       })
     );
 
@@ -161,14 +160,6 @@ export class ElsaDataApplicationConstruct extends Construct {
             Stack.of(this).account
           }:mapRun:CopyOut*/*:*`,
         ],
-      })
-    );
-
-    // allow cloudtrail queries to get data egress records
-    policy.addStatements(
-      new PolicyStatement({
-        actions: ["cloudtrail:StartQuery", "cloudtrail:GetQueryResults"],
-        resources: ["*"],
       })
     );
 

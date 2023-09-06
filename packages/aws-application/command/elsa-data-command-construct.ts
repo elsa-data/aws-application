@@ -3,7 +3,7 @@ import { Construct } from "constructs";
 import { Policy, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { Function, Runtime } from "aws-cdk-lib/aws-lambda";
 import { ISecurityGroup } from "aws-cdk-lib/aws-ec2";
-import { Service as CloudMapService } from "aws-cdk-lib/aws-servicediscovery";
+import { INamespace, Service } from "aws-cdk-lib/aws-servicediscovery";
 import { ElsaDataApplicationSettings } from "../elsa-data-application-settings";
 import { IBucket } from "aws-cdk-lib/aws-s3";
 import { join } from "path";
@@ -12,6 +12,7 @@ import { ClusterConstruct } from "../construct/cluster-construct";
 import { ContainerConstruct } from "../construct/container-construct";
 import { TaskDefinitionConstruct } from "../construct/task-definition-construct";
 import { FargateService } from "aws-cdk-lib/aws-ecs";
+import { getPolicyStatementsFromDataBucketPaths } from "../helper/bucket-names-to-policy";
 
 interface Props extends ElsaDataApplicationSettings {
   readonly cluster: ClusterConstruct;
@@ -22,7 +23,7 @@ interface Props extends ElsaDataApplicationSettings {
 
   readonly appService: FargateService;
 
-  readonly cloudMapService: CloudMapService;
+  readonly cloudMapNamespace: INamespace;
 
   // the security group of our edgedb - that we will put ourselves in to enable access
   readonly edgeDbSecurityGroup: ISecurityGroup;
@@ -40,7 +41,7 @@ interface Props extends ElsaDataApplicationSettings {
  * It uses the same Elsa Data docker image as the actual web app, but
  * is invoked differently.
  */
-export class ElsaDataApplicationCommandConstruct extends Construct {
+export class ElsaDataCommandConstruct extends Construct {
   constructor(scope: Construct, id: string, props: Props) {
     super(scope, id);
 
@@ -49,31 +50,12 @@ export class ElsaDataApplicationCommandConstruct extends Construct {
     // need to be able to fetch secrets - we wildcard to every Secret that has our designated prefix of elsa*
     policy.addStatements(props.accessSecretsPolicyStatement);
 
-    // restrict our Get operations to a very specific set of keys in the named buckets
-    // NOTE: our 'signing' is always done by a different user so this is not the only
-    // permission that has to be set correctly
-    for (const [bucketName, keyWildcards] of Object.entries(
-      props.awsPermissions.dataBucketPaths
-    )) {
-      policy.addStatements(
-        new PolicyStatement({
-          actions: ["s3:GetObject"],
-          // NOTE: we could consider restricting to region or account here in constructing the ARNS
-          // but given the bucket names are already globally specific we leave them open
-          resources: keyWildcards.map(
-            (k) => `arn:${Stack.of(this).partition}:s3:::${bucketName}/${k}`
-          ),
-        })
-      );
-    }
-
+    // we give the command broad access to the data for the purposes of generating dataset
     policy.addStatements(
-      new PolicyStatement({
-        actions: ["s3:ListBucket"],
-        resources: Object.keys(props.awsPermissions.dataBucketPaths).map(
-          (b) => `arn:${Stack.of(this).partition}:s3:::${b}`
-        ),
-      })
+      ...getPolicyStatementsFromDataBucketPaths(
+        Stack.of(this).partition,
+        props.awsPermissions.dataBucketPaths
+      )
     );
 
     // allow the command Elsa's to do arbitrary things to tasks in the same cluster
@@ -104,8 +86,16 @@ export class ElsaDataApplicationCommandConstruct extends Construct {
       props.appService
     );
 
-    // we register it into the cloudmap cloudMapService so outside tools can locate it
-    props.cloudMapService.registerNonIpInstance("CommandLambda", {
+    // register a cloudMapService for the Application in our namespace
+    // chose a sensible default - but allow an alteration in case I guess someone might
+    // want to run two Elsa *in the same infrastructure*
+    const commandService = new Service(this, "CloudMapService", {
+      namespace: props.cloudMapNamespace,
+      name: "Command",
+    });
+
+    // we register it into the cloud map namespace so outside CLI tools can locate it
+    commandService.registerNonIpInstance("CloudMapLambdaInstance", {
       customAttributes: {
         lambdaArn: commandFunction.functionArn,
       },
@@ -136,6 +126,8 @@ export class ElsaDataApplicationCommandConstruct extends Construct {
 
     const f = new NodejsFunction(this, "CommandLambda", {
       entry: entry,
+      // note this is *just* the memory to launch the ECS task - so ECS task memory is
+      // set elsewhere
       memorySize: 128,
       timeout: Duration.minutes(14),
       // by specifying the precise runtime - the bundler knows exactly what packages are already in

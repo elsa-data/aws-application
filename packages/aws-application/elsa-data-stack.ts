@@ -3,7 +3,7 @@ import { Construct } from "constructs";
 import { ElsaDataApplicationConstruct } from "./app/elsa-data-application-construct";
 import { ElsaDataStackSettings } from "./elsa-data-stack-settings";
 import { InfrastructureClient } from "@elsa-data/aws-infrastructure-client";
-import { ElsaDataApplicationCommandConstruct } from "./app-command/elsa-data-application-command-construct";
+import { ElsaDataCommandConstruct } from "./command/elsa-data-command-construct";
 import { ClusterConstruct } from "./construct/cluster-construct";
 import { RetentionDays } from "aws-cdk-lib/aws-logs";
 import { ContainerConstruct } from "./construct/container-construct";
@@ -142,6 +142,8 @@ export class ElsaDataStack extends Stack {
       edgeDbSecurityGroup: edgeDbSecurityGroup,
       accessSecretsPolicyStatement:
         infraClient.getSecretPolicyStatementFromLookup(this),
+      discoverServicesPolicyStatement:
+        infraClient.getCloudMapDiscoveryPolicyStatementFromLookup(this),
       tempBucket: tempBucket,
       ...applicationProps,
     });
@@ -161,12 +163,12 @@ export class ElsaDataStack extends Stack {
       logStreamPrefix: "elsa",
     });
 
-    new ElsaDataApplicationCommandConstruct(this, "AppCommand", {
+    new ElsaDataCommandConstruct(this, "AppCommand", {
       cluster: cluster,
       container: container,
       taskDefinition: appCommandDef,
       appService: app.fargateService(),
-      cloudMapService: cloudMapService,
+      cloudMapNamespace: namespace,
       edgeDbSecurityGroup: edgeDbSecurityGroup,
       accessSecretsPolicyStatement:
         infraClient.getSecretPolicyStatementFromLookup(this),
