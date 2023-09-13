@@ -7,7 +7,6 @@ import { ElsaDataCommandConstruct } from "./command/elsa-data-command-construct"
 import { ClusterConstruct } from "./construct/cluster-construct";
 import { RetentionDays } from "aws-cdk-lib/aws-logs";
 import { ContainerConstruct } from "./construct/container-construct";
-import { Service } from "aws-cdk-lib/aws-servicediscovery";
 import { TaskDefinitionConstruct } from "./construct/task-definition-construct";
 import { CpuArchitecture } from "aws-cdk-lib/aws-ecs";
 
@@ -73,14 +72,6 @@ export class ElsaDataStack extends Stack {
       logRetention: RetentionDays.ONE_MONTH,
     });
 
-    // register a cloudMapService for the Application in our namespace
-    // chose a sensible default - but allow an alteration in case I guess someone might
-    // want to run two Elsa *in the same infrastructure*
-    const cloudMapService = new Service(this, "CloudMapService", {
-      namespace: namespace,
-      name: applicationProps.serviceName ?? "Application",
-    });
-
     const deployedUrl = `https://${applicationProps.urlPrefix}.${hostedZone.zoneName}`;
 
     if (applicationProps.databaseName === "edgedb")
@@ -106,8 +97,7 @@ export class ElsaDataStack extends Stack {
       ELSA_DATA_CONFIG_DEPLOYED_URL: deployedUrl,
       ELSA_DATA_CONFIG_HTTP_HOSTING_PORT: "80",
       ELSA_DATA_CONFIG_AWS_TEMP_BUCKET: tempBucket.bucketName,
-      ELSA_DATA_CONFIG_SERVICE_DISCOVERY_NAMESPACE:
-        cloudMapService.namespace.namespaceName,
+      ELSA_DATA_CONFIG_SERVICE_DISCOVERY_NAMESPACE: namespace.namespaceName,
       // only in development are we likely to be using an image that is not immutable
       // i.e. dev we might use "latest"... but in production we should be using "1.0.1" for example
       //  props.isDevelopment ? "default" : "once",
@@ -127,46 +117,58 @@ export class ElsaDataStack extends Stack {
       environment: makeEnvironment(),
       secrets: makeSecrets(),
       cpuArchitecture: CpuArchitecture.X86_64,
-      // NOTE there is a dependence here from the CommandLambda which uses the prefix to extract log messages
-      // TODO pass this into the command lambda setup (also FIXED_CONTAINER_NAME)
-      logStreamPrefix: "elsa",
+      logStreamPrefix: "elsa-data-app",
     });
+
+    /*
+      DISABLED - WAITING ON A CDK CONSTRUCT FOR SETTING CNAME OF APPRUNNER
+      THEN WE REALLY SHOULD CONSIDER
+      THIS WOULD REPLACE THE TASK/CLUSTER FOR ACTUALLY RUNNING THE ELSA WEBSITE
+      new ElsaDataApplicationAppRunnerConstruct(this, "ElsaDataAppRunner", {
+      env: props.env,
+      vpc: vpc,
+      settings: props.serviceElsaData,
+      hostedZoneCertificate: certificate!,
+      hostedZone: hostedZone,
+      cloudMapService: cloudMapService,
+      edgeDbDsnNoPassword: edgeDb.dsnForEnvironmentVariable,
+      edgeDbPasswordSecret: edgeDb.edgeDbPasswordSecret,
+    });*/
 
     const app = new ElsaDataApplicationConstruct(this, "App", {
       cluster: cluster,
       container: container,
       taskDefinition: appDef,
-      cloudMapService: cloudMapService,
       hostedZoneCertificate: certificate!,
       hostedZone: hostedZone,
+      deployedUrl: deployedUrl,
       edgeDbSecurityGroup: edgeDbSecurityGroup,
       accessSecretsPolicyStatement:
         infraClient.getSecretPolicyStatementFromLookup(this),
       discoverServicesPolicyStatement:
         infraClient.getCloudMapDiscoveryPolicyStatementFromLookup(this),
+      cloudMapNamespace: namespace,
       tempBucket: tempBucket,
       ...applicationProps,
     });
 
-    const appCommandDef = new TaskDefinitionConstruct(this, "AppCommandDef", {
+    const commandDef = new TaskDefinitionConstruct(this, "CommandDef", {
       cluster: cluster,
       container: container,
-      // for app commands we definitely need less CPU (we don't really care how long the commands take)
+      // for commands we definitely need less CPU (we don't really care how long the commands take)
       // and we will see whether we can get away with less memory (we won't be spinning up a web server for instance)
       memoryLimitMiB: 1024,
       cpu: 512,
       environment: makeEnvironment(),
       secrets: makeSecrets(),
       cpuArchitecture: CpuArchitecture.X86_64,
-      // NOTE there is a dependence here from the CommandLambda which uses the prefix to extract log messages
-      // TODO pass this into the command lambda setup (also FIXED_CONTAINER_NAME)
-      logStreamPrefix: "elsa",
+      logStreamPrefix: "elsa-data-command",
     });
 
-    new ElsaDataCommandConstruct(this, "AppCommand", {
+    new ElsaDataCommandConstruct(this, "Command", {
       cluster: cluster,
       container: container,
-      taskDefinition: appCommandDef,
+      taskDefinition: commandDef,
       appService: app.fargateService(),
       cloudMapNamespace: namespace,
       edgeDbSecurityGroup: edgeDbSecurityGroup,
@@ -179,19 +181,5 @@ export class ElsaDataStack extends Stack {
     new CfnOutput(this, "ElsaDataDeployUrl", {
       value: deployedUrl,
     });
-
-    /*
-      DISABLED - WAITING ON A CDK CONSTRUCT FOR SETTING CNAME OF APPRUNNER
-      THEN WE REALLY SHOULD CONSIDER
-      new ElsaDataApplicationAppRunnerConstruct(this, "ElsaDataAppRunner", {
-      env: props.env,
-      vpc: vpc,
-      settings: props.serviceElsaData,
-      hostedZoneCertificate: certificate!,
-      hostedZone: hostedZone,
-      cloudMapService: cloudMapService,
-      edgeDbDsnNoPassword: edgeDb.dsnForEnvironmentVariable,
-      edgeDbPasswordSecret: edgeDb.edgeDbPasswordSecret,
-    });*/
   }
 }

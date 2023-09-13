@@ -24,6 +24,8 @@ import * as apprunner from "@aws-cdk/aws-apprunner-alpha";
 // WIP warning
 // was used to test the concept
 // waiting on a CDK construct for settings the deployed URL and then we should revisit
+// THIS GETS SLOWLY OUT OF DATA WITH THE REAL APPLICATION CONSTRUCT - SO PLEASE DO A CHECK FOR CHANGES THERE
+// AND IMPLEMENT HERE
 //
 
 interface Props extends StackProps {

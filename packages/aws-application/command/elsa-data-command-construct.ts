@@ -72,7 +72,8 @@ export class ElsaDataCommandConstruct extends Construct {
       })
     );
 
-    // the permissions of the running container (i.e all AWS functionality used by Elsa Data code)
+    // the permissions of the running Command container
+    // (i.e all AWS functionality used by Elsa Data code FOR ADMIN TASKS)
     props.taskDefinition.taskDefinition.taskRole.attachInlinePolicy(policy);
 
     // the command function is an invocable lambda that will then go and spin up an ad-hoc Task in our
@@ -86,12 +87,11 @@ export class ElsaDataCommandConstruct extends Construct {
       props.appService
     );
 
-    // register a cloudMapService for the Application in our namespace
-    // chose a sensible default - but allow an alteration in case I guess someone might
-    // want to run two Elsa *in the same infrastructure*
+    // register a cloudMapService for the Command infrastructure in our namespace
     const commandService = new Service(this, "CloudMapService", {
       namespace: props.cloudMapNamespace,
       name: "Command",
+      description: "Command service for administration activity",
     });
 
     // we register it into the cloud map namespace so outside CLI tools can locate it
@@ -140,6 +140,7 @@ export class ElsaDataCommandConstruct extends Construct {
         TASK_DEFINITION_ARN: taskDefinition.taskDefinition.taskDefinitionArn,
         SERVICE_ARN: appService.serviceArn,
         CONTAINER_NAME: container.containerName,
+        LOG_STREAM_PREFIX: taskDefinition.logStreamPrefix,
         // we are passing to the lambda the subnets and security groups that need to be used
         // by the Fargate task it will invoke
         SUBNETS: cluster.vpc

@@ -30,6 +30,7 @@ export const handler = async (event) => {
   const clusterLogGroupName = process.env["CLUSTER_LOG_GROUP_NAME"];
   const taskDefinitionArn = process.env["TASK_DEFINITION_ARN"];
   const containerName = process.env["CONTAINER_NAME"];
+  const logStreamPrefix = process.env["LOG_STREAM_PREFIX"];
   const subnets = process.env["SUBNETS"];
   const securityGroups = process.env["SECURITY_GROUPS"];
 
@@ -38,17 +39,19 @@ export const handler = async (event) => {
     !clusterLogGroupName ||
     !taskDefinitionArn ||
     !containerName ||
+    !logStreamPrefix ||
     !subnets ||
     !securityGroups
   )
     throw new Error(
-      "Cluster settings must be passed in via environment variables"
+      "Lambda must be invoked with cluster settings passed in via environment variables"
     );
 
   console.log(clusterArn);
   console.log(clusterLogGroupName);
   console.log(taskDefinitionArn);
   console.log(containerName);
+  console.log(logStreamPrefix);
   console.log(subnets);
   console.log(securityGroups);
 
@@ -89,9 +92,7 @@ export const handler = async (event) => {
     const taskArnSplit = taskArn.split("/");
 
     if (taskArnSplit.length === 3) {
-      // TODO these come from the parent   logStreamPrefix/containername
-      //      so possibly pass these rather than fix them here
-      logStreamName = `elsa/ElsaData/${taskArnSplit[2]}`;
+      logStreamName = `${logStreamPrefix}/${containerName}/${taskArnSplit[2]}`;
     }
 
     let lastStatus = result.tasks[0].lastStatus;
@@ -111,6 +112,8 @@ export const handler = async (event) => {
       await sleep(10000);
     }
 
+    // we return the log group name and stream name so the bash invoker can fetch all
+    // the messages and display them to the user
     return {
       message: "Success",
       logGroupName: clusterLogGroupName,

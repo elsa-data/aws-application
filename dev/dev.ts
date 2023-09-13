@@ -37,9 +37,9 @@ new ElsaDataStack(
     },
     description: descriptionWithTag(undefined),
     tags: {
-      "umccr-org:ProductVersion": DEV_DEPLOYED_IMAGE_TAG,
-      "umccr-org:Stack": "ElsaDataApplication",
-      "umccr-org:Product": "ElsaData",
+      ProductVersion: DEV_DEPLOYED_IMAGE_TAG,
+      Stack: "ElsaDataApplication",
+      Product: "ElsaData",
     },
   },
   {

@@ -15,5 +15,23 @@
       url: "https://htsget.elsa.dev.umccr.org",
       maxAgeInSeconds: 600,
     },
+    {
+      id: "parkville-ap",
+      type: "aws-access-point",
+      allowedVpcs: {
+        "UMCCR Nextflow Tower Research Group 1": {
+          accountId: "842385035780",
+          vpcId: "vpc-0d1e5b642f953920f",
+        },
+        "UMCCR Nextflow Tower Research Group 2": {
+          accountId: "842385035780",
+          vpcId: "vpc-0ae1fbadcf21859f3",
+        },
+        "UoM Demo": {
+          accountId: "534840902377",
+          vpcId: "vpc-031e3d24ea0e50664",
+        },
+      },
+    },
   ],
 }

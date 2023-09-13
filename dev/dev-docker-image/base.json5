@@ -3,25 +3,16 @@
   ontoFhirUrl: "https://onto.prod.umccr.org/fhir",
   releaseKeyPrefix: "R",
   ipLookup: {
-    maxMindDbPath: "Geoacumen-Country.mmdb",
+    maxMindDbPath: "/dev-config/Geoacumen-Country.mmdb",
   },
-  sharers: [
-    {
-      id: "object-signing",
-      type: "object-signing",
-      maxAgeInSeconds: 600,
-    },
-    {
-      id: "copy-out",
-      type: "copy-out",
-    },
-    {
-      id: "umccr-htsget",
-      type: "htsget",
-      url: "https://htsget.elsa.dev.umccr.org",
-      maxAgeInSeconds: 600,
-    },
-  ],
+  feature: {
+    enableConsentDisplay: true,
+    enableCohortConstructor: true,
+    enableDataEgressViewer: false,
+  },
+  // datasetEgress: {
+  //  updateInterval: "0 6 * * *", // 6am
+  // },
   logger: {
     level: "debug",
   },

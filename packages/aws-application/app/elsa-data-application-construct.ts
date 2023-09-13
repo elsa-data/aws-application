@@ -3,7 +3,7 @@ import { Construct } from "constructs";
 import { DockerServiceWithHttpsLoadBalancerConstruct } from "../construct/docker-service-with-https-load-balancer-construct";
 import { Policy, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { ISecurityGroup } from "aws-cdk-lib/aws-ec2";
-import { Service } from "aws-cdk-lib/aws-servicediscovery";
+import { INamespace, Service } from "aws-cdk-lib/aws-servicediscovery";
 import { IHostedZone } from "aws-cdk-lib/aws-route53";
 import { ICertificate } from "aws-cdk-lib/aws-certificatemanager";
 import { ElsaDataApplicationSettings } from "../elsa-data-application-settings";
@@ -21,10 +21,12 @@ interface Props extends ElsaDataApplicationSettings {
 
   readonly taskDefinition: TaskDefinitionConstruct;
 
-  readonly cloudMapService: Service;
+  readonly cloudMapNamespace: INamespace;
 
   readonly hostedZone: IHostedZone;
   readonly hostedZoneCertificate: ICertificate;
+
+  readonly deployedUrl: string;
 
   // the security group of our edgedb - that we will put ourselves in to enable access
   readonly edgeDbSecurityGroup: ISecurityGroup;
@@ -92,6 +94,8 @@ export class ElsaDataApplicationConstruct extends Construct {
       })
     );
 
+    // TODO consider moving all the "write" permissions here to be a CMD level (i.e. cluster admins only)
+    // and only have "read" permissions here
     if (props.awsPermissions.enableAccessPoints) {
       policy.addStatements(
         // temporarily give all S3 accesspoint perms - can we tighten?
@@ -194,6 +198,21 @@ export class ElsaDataApplicationConstruct extends Construct {
     props.tempBucket.grantReadWrite(
       this.privateServiceWithLoadBalancer.service.taskDefinition.taskRole
     );
+
+    // register a cloudMapService for the Application in our namespace
+    // chose a sensible default - but allow an alteration in case I guess someone might
+    // want to run two Elsa *in the same infrastructure*
+    const service = new Service(this, "CloudMapService", {
+      namespace: props.cloudMapNamespace,
+      name: "Application",
+      description: "Web application",
+    });
+
+    service.registerNonIpInstance("CloudMapCustomAttributes", {
+      customAttributes: {
+        deployedUrl: props.deployedUrl,
+      },
+    });
   }
 
   public fargateService(): FargateService {

@@ -76,11 +76,6 @@ export interface ElsaDataApplicationSettings {
    * The cpu assigned to the Elsa Data application container - defaults to something sensible
    */
   readonly cpu?: number;
-
-  /**
-   * If present, an alternative CloudMapService name for the application - defaults to Application
-   */
-  readonly serviceName?: string;
 }
 
 export interface ElsaDataApplicationBuildLocal {
