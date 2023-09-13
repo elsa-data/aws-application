@@ -28,17 +28,25 @@ type Props = {
   readonly cpu: number;
   readonly cpuArchitecture: CpuArchitecture;
 
+  // a string that is sent to our AWS logger to be the stream prefix
+  // needs to be recorded and available so that we can coordinate fetching of logs
   readonly logStreamPrefix: string;
 };
 
 /**
  * A construct for a TaskDefinition that can run our Elsa Data container.
+ * This definition gets used for both the running 24/7 website AND for
+ * one-off tasks that do "admin" work. They may get given different
+ * permissions outside of this construct.
  */
 export class TaskDefinitionConstruct extends Construct {
   public readonly taskDefinition: FargateTaskDefinition;
+  public readonly logStreamPrefix: string;
 
   constructor(scope: Construct, id: string, props: Props) {
     super(scope, id);
+
+    this.logStreamPrefix = props.logStreamPrefix;
 
     // we do the task definition by hand as we have some specialised settings
     this.taskDefinition = new FargateTaskDefinition(this, "TaskDefinition", {
