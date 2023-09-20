@@ -94,6 +94,14 @@ export class ElsaDataApplicationConstruct extends Construct {
       })
     );
 
+    // allow sending emails through SES via Node Mailer (https://nodemailer.com/transports/ses/)
+    policy.addStatements(
+      new PolicyStatement({
+        actions: ["ses:SendRawEmail"],
+        resources: ["*"],
+      })
+    );
+
     // TODO consider moving all the "write" permissions here to be a CMD level (i.e. cluster admins only)
     // and only have "read" permissions here
     if (props.awsPermissions.enableAccessPoints) {

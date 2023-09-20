@@ -10,6 +10,14 @@
     enableCohortConstructor: true,
     enableDataEgressViewer: false,
   },
+  emailer: {
+    mode: "SES",
+    templateRootPath: "/a/emails",
+    from: {
+      name: "Elsa Data",
+      address: "no-reply@umccr.org",
+    },
+  },
   // datasetEgress: {
   //  updateInterval: "0 6 * * *", // 6am
   // },

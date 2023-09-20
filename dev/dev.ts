@@ -22,7 +22,7 @@ const descriptionWithTag = (tag?: string) =>
 
 // bring this out to the top as it is the type of thing we might want to change during dev
 // to point to other PR branches etc
-const DEV_DEPLOYED_IMAGE_TAG = "0.4.1";
+const DEV_DEPLOYED_IMAGE_TAG = "0.4.4";
 
 /**
  * Stack for dev
