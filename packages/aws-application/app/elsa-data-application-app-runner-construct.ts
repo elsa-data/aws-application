@@ -6,7 +6,7 @@ import {
   Role,
   ServicePrincipal,
 } from "aws-cdk-lib/aws-iam";
-import { INamespace } from "aws-cdk-lib/aws-servicediscovery";
+import { INamespace, Service } from "aws-cdk-lib/aws-servicediscovery";
 import { ElsaDataApplicationSettings } from "../elsa-data-application-settings";
 import * as apprunner from "@aws-cdk/aws-apprunner-alpha";
 import {
@@ -14,7 +14,7 @@ import {
   addBaseStatementsToPolicy,
 } from "./elsa-data-application-shared";
 import { getPolicyStatementsFromDataBucketPaths } from "../helper/bucket-names-to-policy";
-import { ISecurityGroup } from "aws-cdk-lib/aws-ec2";
+import { ISecurityGroup, SecurityGroup } from "aws-cdk-lib/aws-ec2";
 import { IBucket } from "aws-cdk-lib/aws-s3";
 import { ContainerConstruct } from "../construct/container-construct";
 import { IHostedZone } from "aws-cdk-lib/aws-route53";
@@ -60,12 +60,21 @@ export class ElsaDataApplicationAppRunnerConstruct extends Construct {
   constructor(scope: Construct, id: string, props: Props) {
     super(scope, id);
 
+    // we need to give the Vpc Connector a security group that allows outward traffic
+    // so that we can make AWS calls
+    // the VPC connector would normally make this for us by default - but because we *als* want
+    // to specify a edgedb security group - we must do it manually and set both
+    const appSecurityGroup = new SecurityGroup(this, "AppRunnerSecurityGroup", {
+      vpc: props.vpc,
+      allowAllOutbound: true,
+    });
+
     const vpcConnector = new apprunner.VpcConnector(this, "VpcConnector", {
       vpc: props.vpc,
       vpcSubnets: props.vpc.selectSubnets({
         subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
       }),
-      securityGroups: [props.edgeDbSecurityGroup],
+      securityGroups: [appSecurityGroup, props.edgeDbSecurityGroup],
     });
 
     const policy = new Policy(this, "AppRunnerServiceTaskPolicy");
@@ -105,6 +114,22 @@ export class ElsaDataApplicationAppRunnerConstruct extends Construct {
       instanceRole: role,
       autoDeploymentsEnabled: false,
       vpcConnector: vpcConnector,
+    });
+
+    // register a cloudMapService for the Application in our namespace
+    // chose a sensible default - but allow an alteration in case I guess someone might
+    // want to run two Elsa *in the same infrastructure*
+    const service = new Service(this, "CloudMapService", {
+      namespace: props.cloudMapNamespace,
+      name: "ApplicationRunner",
+      description: "Web application",
+    });
+
+    service.registerNonIpInstance("CloudMapCustomAttributes", {
+      customAttributes: {
+        serviceUrl: appService.serviceUrl,
+        deployedUrl: props.deployedUrl,
+      },
     });
 
     new CfnOutput(this, "ElsaDataDeployUrl", {

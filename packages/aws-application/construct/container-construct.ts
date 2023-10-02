@@ -56,6 +56,20 @@ export class ContainerConstruct extends Construct {
   constructor(scope: Construct, id: string, props: Props) {
     super(scope, id);
 
+    const ic: apprunner.ImageConfiguration = {
+      port: 80,
+      environmentSecrets: props.secrets,
+      environmentVariables: props.environment,
+    };
+
+    /*const hc: apprunner.HealthCheck.http({
+      healthyThreshold: 5,
+      interval: Duration.seconds(10),
+      path: '/',
+      timeout: Duration.seconds(10),
+      unhealthyThreshold: 10,
+    }),*/
+
     if (props.buildLocal) {
       // we construct a CDK deployed docker image with any minor alterations
       // we have made to the base image
@@ -82,25 +96,20 @@ export class ContainerConstruct extends Construct {
       this.containerImage = ContainerImage.fromDockerImageAsset(asset);
 
       this.appRunnerSource = apprunner.Source.fromAsset({
-        imageConfiguration: {
-          port: 80,
-          environmentSecrets: props.secrets,
-          environmentVariables: props.environment,
-        },
+        imageConfiguration: ic,
         asset: asset,
       });
     } else {
+      // we are just going to source the images direct from the public
+      // repository
+
       this.containerImage = ContainerImage.fromRegistry(
         props.imageBaseName,
         {}
       );
 
       this.appRunnerSource = apprunner.Source.fromEcrPublic({
-        imageConfiguration: {
-          port: 80,
-          environmentSecrets: props.secrets,
-          environmentVariables: props.environment,
-        },
+        imageConfiguration: ic,
         imageIdentifier: props.imageBaseName,
       });
     }
