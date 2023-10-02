@@ -1,6 +1,6 @@
 import { aws_ecs as ecs, CfnOutput, Stack, StackProps } from "aws-cdk-lib";
 import { Construct } from "constructs";
-import { ElsaDataApplicationConstruct } from "./app/elsa-data-application-construct";
+import { ElsaDataApplicationFargateConstruct } from "./app/elsa-data-application-fargate-construct";
 import { ElsaDataStackSettings } from "./elsa-data-stack-settings";
 import { InfrastructureClient } from "@elsa-data/aws-infrastructure-client";
 import { ElsaDataCommandConstruct } from "./command/elsa-data-command-construct";
@@ -9,6 +9,7 @@ import { RetentionDays } from "aws-cdk-lib/aws-logs";
 import { ContainerConstruct } from "./construct/container-construct";
 import { TaskDefinitionConstruct } from "./construct/task-definition-construct";
 import { CpuArchitecture } from "aws-cdk-lib/aws-ecs";
+import { ElsaDataApplicationAppRunnerConstruct } from "./app/elsa-data-application-app-runner-construct";
 
 export {
   ElsaDataStackSettings,
@@ -60,12 +61,6 @@ export class ElsaDataStack extends Stack {
 
     const tempBucket = infraClient.getTempBucketFromLookup(this);
 
-    // the Elsa Data container is a shared bundling up of the Elsa Data image
-    const container = new ContainerConstruct(this, "Container", {
-      buildLocal: applicationProps.buildLocal,
-      imageBaseName: applicationProps.imageBaseName,
-    });
-
     // the cluster is a shared location to run the Elsa Data containers on
     const cluster = new ClusterConstruct(this, "Cluster", {
       vpc: vpc,
@@ -105,8 +100,16 @@ export class ElsaDataStack extends Stack {
       ECS_IMAGE_PULL_BEHAVIOR: "default",
     });
 
-    const makeSecrets = (): { [p: string]: ecs.Secret } => ({
+    const makeEcsSecrets = (): { [p: string]: ecs.Secret } => ({
       EDGEDB_PASSWORD: ecs.Secret.fromSecretsManager(edgeDbAdminPasswordSecret),
+    });
+
+    // the Elsa Data container is a shared bundling up of the Elsa Data image
+    const container = new ContainerConstruct(this, "Container", {
+      buildLocal: applicationProps.buildLocal,
+      imageBaseName: applicationProps.imageBaseName,
+      environment: makeEnvironment(),
+      secrets: makeEcsSecrets(),
     });
 
     const appDef = new TaskDefinitionConstruct(this, "AppDef", {
@@ -115,7 +118,7 @@ export class ElsaDataStack extends Stack {
       memoryLimitMiB: applicationProps.memoryLimitMiB ?? 2048,
       cpu: applicationProps.cpu ?? 1024,
       environment: makeEnvironment(),
-      secrets: makeSecrets(),
+      secrets: makeEcsSecrets(),
       cpuArchitecture: CpuArchitecture.X86_64,
       logStreamPrefix: "elsa-data-app",
     });
@@ -124,18 +127,25 @@ export class ElsaDataStack extends Stack {
       DISABLED - WAITING ON A CDK CONSTRUCT FOR SETTING CNAME OF APPRUNNER
       THEN WE REALLY SHOULD CONSIDER
       THIS WOULD REPLACE THE TASK/CLUSTER FOR ACTUALLY RUNNING THE ELSA WEBSITE
-      new ElsaDataApplicationAppRunnerConstruct(this, "ElsaDataAppRunner", {
-      env: props.env,
+      */
+
+    new ElsaDataApplicationAppRunnerConstruct(this, "AppRunner", {
       vpc: vpc,
-      settings: props.serviceElsaData,
+      container: container,
       hostedZoneCertificate: certificate!,
       hostedZone: hostedZone,
-      cloudMapService: cloudMapService,
-      edgeDbDsnNoPassword: edgeDb.dsnForEnvironmentVariable,
-      edgeDbPasswordSecret: edgeDb.edgeDbPasswordSecret,
-    });*/
+      deployedUrl: deployedUrl,
+      edgeDbSecurityGroup: edgeDbSecurityGroup,
+      accessSecretsPolicyStatement:
+        infraClient.getSecretPolicyStatementFromLookup(this),
+      discoverServicesPolicyStatement:
+        infraClient.getCloudMapDiscoveryPolicyStatementFromLookup(this),
+      cloudMapNamespace: namespace,
+      tempBucket: tempBucket,
+      ...applicationProps,
+    });
 
-    const app = new ElsaDataApplicationConstruct(this, "App", {
+    const app = new ElsaDataApplicationFargateConstruct(this, "App", {
       cluster: cluster,
       container: container,
       taskDefinition: appDef,
@@ -160,7 +170,7 @@ export class ElsaDataStack extends Stack {
       memoryLimitMiB: 1024,
       cpu: 512,
       environment: makeEnvironment(),
-      secrets: makeSecrets(),
+      secrets: makeEcsSecrets(),
       cpuArchitecture: CpuArchitecture.X86_64,
       logStreamPrefix: "elsa-data-command",
     });
