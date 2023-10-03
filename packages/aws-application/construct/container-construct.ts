@@ -1,7 +1,9 @@
 import { Construct } from "constructs";
 import { DockerImageAsset, Platform } from "aws-cdk-lib/aws-ecr-assets";
-import { ContainerImage } from "aws-cdk-lib/aws-ecs";
+import { ContainerImage, Secret } from "aws-cdk-lib/aws-ecs";
 import { ElsaDataApplicationBuildLocal } from "../elsa-data-application-settings";
+import { Source } from "@aws-cdk/aws-apprunner-alpha";
+import * as apprunner from "@aws-cdk/aws-apprunner-alpha";
 
 interface Props {
   /**
@@ -19,6 +21,17 @@ interface Props {
    * setup. See also `buildLocal.folder`.
    */
   readonly imageBaseName: string;
+
+  /**
+   * Environment variables to appear in the running container.
+   */
+  readonly environment: { [p: string]: string };
+
+  /**
+   * Secrets that can be expanded out in the environment on spin
+   * up (hidden from AWS console) NOTE: ecs Secrets, not Secret Manager secrets
+   */
+  readonly secrets: { [p: string]: Secret };
 }
 
 // we need a consistent name within the ECS infrastructure for our container
@@ -26,7 +39,11 @@ interface Props {
 const FIXED_CONTAINER_NAME = "ElsaData";
 
 /**
- * The stack for deploying the actual Elsa Data web application.
+ * A construct that represents the runnable Elsa Data container.
+ *
+ * This construct can both be used as a container for Fargate OR a source
+ * for AppRunner. Once the AppRunner constructs come out of Alpha this may
+ * see this able to be consolidated.
  */
 export class ContainerConstruct extends Construct {
   // we allow our Elsa image to either be the straight Elsa image from the public repo
@@ -34,9 +51,24 @@ export class ContainerConstruct extends Construct {
   // added etc)
   public readonly containerImage: ContainerImage;
   public readonly containerName = FIXED_CONTAINER_NAME;
+  public readonly appRunnerSource: Source;
 
   constructor(scope: Construct, id: string, props: Props) {
     super(scope, id);
+
+    const ic: apprunner.ImageConfiguration = {
+      port: 80,
+      environmentSecrets: props.secrets,
+      environmentVariables: props.environment,
+    };
+
+    /*const hc: apprunner.HealthCheck.http({
+      healthyThreshold: 5,
+      interval: Duration.seconds(10),
+      path: '/',
+      timeout: Duration.seconds(10),
+      unhealthyThreshold: 10,
+    }),*/
 
     if (props.buildLocal) {
       // we construct a CDK deployed docker image with any minor alterations
@@ -60,12 +92,26 @@ export class ContainerConstruct extends Construct {
           }),
         },
       });
+
       this.containerImage = ContainerImage.fromDockerImageAsset(asset);
+
+      this.appRunnerSource = apprunner.Source.fromAsset({
+        imageConfiguration: ic,
+        asset: asset,
+      });
     } else {
+      // we are just going to source the images direct from the public
+      // repository
+
       this.containerImage = ContainerImage.fromRegistry(
         props.imageBaseName,
         {}
       );
+
+      this.appRunnerSource = apprunner.Source.fromEcrPublic({
+        imageConfiguration: ic,
+        imageIdentifier: props.imageBaseName,
+      });
     }
   }
 }

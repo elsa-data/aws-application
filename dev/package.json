@@ -9,15 +9,15 @@
   },
   "devDependencies": {
     "@tsconfig/node18": "1.0.3",
-    "@types/node": "18.17.12",
-    "aws-cdk": "2.93.0",
-    "aws-cdk-lib": "2.93.0",
+    "@types/node": "18.18.1",
+    "aws-cdk": "2.99.1",
+    "aws-cdk-lib": "2.99.1",
     "constructs": "10.2.70",
     "ts-node": "10.9.1",
     "typescript": "5.2.2"
   },
   "dependencies": {
-    "cdk-nag": "^2.27.100",
+    "cdk-nag": "^2.27.148",
     "@elsa-data/aws-application": "link:../packages/aws-application"
   }
 }

@@ -1,6 +1,5 @@
 import { aws_ecs as ecs, CfnOutput, Stack, StackProps } from "aws-cdk-lib";
 import { Construct } from "constructs";
-import { ElsaDataApplicationConstruct } from "./app/elsa-data-application-construct";
 import { ElsaDataStackSettings } from "./elsa-data-stack-settings";
 import { InfrastructureClient } from "@elsa-data/aws-infrastructure-client";
 import { ElsaDataCommandConstruct } from "./command/elsa-data-command-construct";
@@ -8,7 +7,9 @@ import { ClusterConstruct } from "./construct/cluster-construct";
 import { RetentionDays } from "aws-cdk-lib/aws-logs";
 import { ContainerConstruct } from "./construct/container-construct";
 import { TaskDefinitionConstruct } from "./construct/task-definition-construct";
-import { CpuArchitecture } from "aws-cdk-lib/aws-ecs";
+import { CpuArchitecture, FargateService } from "aws-cdk-lib/aws-ecs";
+import { ElsaDataApplicationAppRunnerConstruct } from "./app/elsa-data-application-app-runner-construct";
+import { SecurityGroup } from "aws-cdk-lib/aws-ec2";
 
 export {
   ElsaDataStackSettings,
@@ -60,12 +61,6 @@ export class ElsaDataStack extends Stack {
 
     const tempBucket = infraClient.getTempBucketFromLookup(this);
 
-    // the Elsa Data container is a shared bundling up of the Elsa Data image
-    const container = new ContainerConstruct(this, "Container", {
-      buildLocal: applicationProps.buildLocal,
-      imageBaseName: applicationProps.imageBaseName,
-    });
-
     // the cluster is a shared location to run the Elsa Data containers on
     const cluster = new ClusterConstruct(this, "Cluster", {
       vpc: vpc,
@@ -105,37 +100,52 @@ export class ElsaDataStack extends Stack {
       ECS_IMAGE_PULL_BEHAVIOR: "default",
     });
 
-    const makeSecrets = (): { [p: string]: ecs.Secret } => ({
+    const makeEcsSecrets = (): { [p: string]: ecs.Secret } => ({
       EDGEDB_PASSWORD: ecs.Secret.fromSecretsManager(edgeDbAdminPasswordSecret),
     });
 
-    const appDef = new TaskDefinitionConstruct(this, "AppDef", {
+    // the Elsa Data container is a shared bundling up of the Elsa Data image
+    const container = new ContainerConstruct(this, "Container", {
+      buildLocal: applicationProps.buildLocal,
+      imageBaseName: applicationProps.imageBaseName,
+      environment: makeEnvironment(),
+      secrets: makeEcsSecrets(),
+    });
+
+    /*const appDef = new TaskDefinitionConstruct(this, "AppDef", {
       cluster: cluster,
       container: container,
       memoryLimitMiB: applicationProps.memoryLimitMiB ?? 2048,
       cpu: applicationProps.cpu ?? 1024,
       environment: makeEnvironment(),
-      secrets: makeSecrets(),
+      secrets: makeEcsSecrets(),
       cpuArchitecture: CpuArchitecture.X86_64,
       logStreamPrefix: "elsa-data-app",
-    });
+    }); */
 
     /*
       DISABLED - WAITING ON A CDK CONSTRUCT FOR SETTING CNAME OF APPRUNNER
       THEN WE REALLY SHOULD CONSIDER
       THIS WOULD REPLACE THE TASK/CLUSTER FOR ACTUALLY RUNNING THE ELSA WEBSITE
-      new ElsaDataApplicationAppRunnerConstruct(this, "ElsaDataAppRunner", {
-      env: props.env,
+      */
+
+    new ElsaDataApplicationAppRunnerConstruct(this, "AppRunner", {
       vpc: vpc,
-      settings: props.serviceElsaData,
+      container: container,
       hostedZoneCertificate: certificate!,
       hostedZone: hostedZone,
-      cloudMapService: cloudMapService,
-      edgeDbDsnNoPassword: edgeDb.dsnForEnvironmentVariable,
-      edgeDbPasswordSecret: edgeDb.edgeDbPasswordSecret,
-    });*/
+      deployedUrl: deployedUrl,
+      edgeDbSecurityGroup: edgeDbSecurityGroup,
+      accessSecretsPolicyStatement:
+        infraClient.getSecretPolicyStatementFromLookup(this),
+      discoverServicesPolicyStatement:
+        infraClient.getCloudMapDiscoveryPolicyStatementFromLookup(this),
+      cloudMapNamespace: namespace,
+      tempBucket: tempBucket,
+      ...applicationProps,
+    });
 
-    const app = new ElsaDataApplicationConstruct(this, "App", {
+    /*const app = new ElsaDataApplicationFargateConstruct(this, "App", {
       cluster: cluster,
       container: container,
       taskDefinition: appDef,
@@ -150,33 +160,52 @@ export class ElsaDataStack extends Stack {
       cloudMapNamespace: namespace,
       tempBucket: tempBucket,
       ...applicationProps,
-    });
+    }); */
 
-    const commandDef = new TaskDefinitionConstruct(this, "CommandDef", {
-      cluster: cluster,
-      container: container,
-      // for commands we definitely need less CPU (we don't really care how long the commands take)
-      // and we will see whether we can get away with less memory (we won't be spinning up a web server for instance)
-      memoryLimitMiB: 1024,
-      cpu: 512,
-      environment: makeEnvironment(),
-      secrets: makeSecrets(),
-      cpuArchitecture: CpuArchitecture.X86_64,
-      logStreamPrefix: "elsa-data-command",
-    });
+    {
+      const commandSecurityGroup = new SecurityGroup(
+        this,
+        "CommandSecurityGroup",
+        {
+          vpc: vpc,
+          allowAllOutbound: true,
+        }
+      );
 
-    new ElsaDataCommandConstruct(this, "Command", {
-      cluster: cluster,
-      container: container,
-      taskDefinition: commandDef,
-      appService: app.fargateService(),
-      cloudMapNamespace: namespace,
-      edgeDbSecurityGroup: edgeDbSecurityGroup,
-      accessSecretsPolicyStatement:
-        infraClient.getSecretPolicyStatementFromLookup(this),
-      tempBucket: tempBucket,
-      ...applicationProps,
-    });
+      const commandDef = new TaskDefinitionConstruct(this, "CommandDef", {
+        cluster: cluster,
+        container: container,
+        // for commands we definitely need less CPU (we don't really care how long the commands take)
+        // and we will see whether we can get away with less memory (we won't be spinning up a web server for instance)
+        memoryLimitMiB: 1024,
+        cpu: 512,
+        environment: makeEnvironment(),
+        secrets: makeEcsSecrets(),
+        cpuArchitecture: CpuArchitecture.X86_64,
+        logStreamPrefix: "elsa-data-command",
+      });
+
+      const commandService = new FargateService(this, "CommandService", {
+        cluster: cluster.cluster,
+        taskDefinition: commandDef.taskDefinition,
+        vpcSubnets: cluster.clusterSubnetSelection,
+        securityGroups: [commandSecurityGroup, edgeDbSecurityGroup],
+        assignPublicIp: false,
+      });
+
+      new ElsaDataCommandConstruct(this, "Command", {
+        cluster: cluster,
+        container: container,
+        taskDefinition: commandDef,
+        appService: commandService,
+        cloudMapNamespace: namespace,
+        edgeDbSecurityGroup: edgeDbSecurityGroup,
+        accessSecretsPolicyStatement:
+          infraClient.getSecretPolicyStatementFromLookup(this),
+        tempBucket: tempBucket,
+        ...applicationProps,
+      });
+    }
 
     new CfnOutput(this, "ElsaDataDeployUrl", {
       value: deployedUrl,
