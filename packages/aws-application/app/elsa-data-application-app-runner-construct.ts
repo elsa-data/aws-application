@@ -20,14 +20,6 @@ import { ContainerConstruct } from "../construct/container-construct";
 import { IHostedZone } from "aws-cdk-lib/aws-route53";
 import { ICertificate } from "aws-cdk-lib/aws-certificatemanager";
 
-//
-// WIP warning
-// was used to test the concept
-// waiting on a CDK construct for settings the deployed URL and then we should revisit
-// THIS GETS SLOWLY OUT OF DATA WITH THE REAL APPLICATION CONSTRUCT - SO PLEASE DO A CHECK FOR CHANGES THERE
-// AND IMPLEMENT HERE
-//
-
 interface Props extends ElsaDataApplicationSettings {
   readonly vpc: ec2.IVpc;
 
@@ -62,8 +54,8 @@ export class ElsaDataApplicationAppRunnerConstruct extends Construct {
 
     // we need to give the Vpc Connector a security group that allows outward traffic
     // so that we can make AWS calls
-    // the VPC connector would normally make this for us by default - but because we *als* want
-    // to specify a edgedb security group - we must do it manually and set both
+    // the VPC connector would normally make this for us by default - but because we *also* want
+    // to specify an edgedb security group - we must do it manually and set both
     const appSecurityGroup = new SecurityGroup(this, "AppRunnerSecurityGroup", {
       vpc: props.vpc,
       allowAllOutbound: true,
