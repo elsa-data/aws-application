@@ -17,6 +17,8 @@
       name: "Elsa Data",
       address: "no-reply@umccr.org",
     },
+    sendEmails: true,
+    previewEmails: false,
   },
   // datasetEgress: {
   //  updateInterval: "0 6 * * *", // 6am
