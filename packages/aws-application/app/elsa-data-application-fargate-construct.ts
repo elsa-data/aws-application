@@ -65,7 +65,7 @@ export class ElsaDataApplicationFargateConstruct extends Construct {
           taskDefinition: props.taskDefinition,
           // we need to at least be placed in the EdgeDb security group so that we can access EdgeDb
           securityGroups: [props.edgeDbSecurityGroup],
-          hostedPrefix: props.urlPrefix,
+          hostedPrefix: props.urlPrefix!,
           hostedZone: props.hostedZone,
           hostedZoneCertificate: props.hostedZoneCertificate,
           desiredCount: props.desiredCount ?? 1,

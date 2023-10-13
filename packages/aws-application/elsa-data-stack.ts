@@ -10,6 +10,8 @@ import { TaskDefinitionConstruct } from "./construct/task-definition-construct";
 import { CpuArchitecture, FargateService } from "aws-cdk-lib/aws-ecs";
 import { ElsaDataApplicationAppRunnerConstruct } from "./app/elsa-data-application-app-runner-construct";
 import { SecurityGroup } from "aws-cdk-lib/aws-ec2";
+import { ICertificate } from "aws-cdk-lib/aws-certificatemanager";
+import { IHostedZone } from "aws-cdk-lib/aws-route53";
 
 export {
   ElsaDataStackSettings,
@@ -40,8 +42,6 @@ export class ElsaDataStack extends Stack {
 
     const namespace = infraClient.getNamespaceFromLookup(this);
 
-    const { hostedZone, certificate } = infraClient.getDnsFromLookup(this);
-
     const edgeDbSecurityGroup = infraClient.getEdgeDbSecurityGroupFromLookup(
       this,
       applicationProps.infrastructureDatabaseInstanceName
@@ -67,7 +67,32 @@ export class ElsaDataStack extends Stack {
       logRetention: RetentionDays.ONE_MONTH,
     });
 
-    const deployedUrl = `https://${applicationProps.urlPrefix}.${hostedZone.zoneName}`;
+    if (applicationProps.urlFull && applicationProps.urlPrefix) {
+      throw new Error("Only one of urlFull and urlPrefix can be specified");
+    }
+
+    let deployedUrl: string;
+    let hostedZone: IHostedZone | undefined = undefined;
+    let hostedZoneCertificate: ICertificate | undefined = undefined;
+
+    if (applicationProps.urlPrefix) {
+      // if url prefix is specified - we expect that the host/certificate is defined by the infrastructure
+      // we are deployed into
+      const { hostedZone: hz, certificate } =
+        infraClient.getDnsFromLookup(this);
+
+      deployedUrl = `https://${applicationProps.urlPrefix}.${hz.zoneName}`;
+
+      hostedZone = hz;
+      hostedZoneCertificate = certificate;
+    } else {
+      // if url full is specified - we expect no DNS is managed by us and all will be
+      // done externally
+      if (!applicationProps.urlFull?.startsWith("https://"))
+        throw new Error("urlFull must start with https://");
+
+      deployedUrl = applicationProps.urlFull;
+    }
 
     if (applicationProps.databaseName === "edgedb")
       throw new Error(
@@ -112,28 +137,13 @@ export class ElsaDataStack extends Stack {
       secrets: makeEcsSecrets(),
     });
 
-    /*const appDef = new TaskDefinitionConstruct(this, "AppDef", {
-      cluster: cluster,
-      container: container,
-      memoryLimitMiB: applicationProps.memoryLimitMiB ?? 2048,
-      cpu: applicationProps.cpu ?? 1024,
-      environment: makeEnvironment(),
-      secrets: makeEcsSecrets(),
-      cpuArchitecture: CpuArchitecture.X86_64,
-      logStreamPrefix: "elsa-data-app",
-    }); */
-
-    /*
-      DISABLED - WAITING ON A CDK CONSTRUCT FOR SETTING CNAME OF APPRUNNER
-      THEN WE REALLY SHOULD CONSIDER
-      THIS WOULD REPLACE THE TASK/CLUSTER FOR ACTUALLY RUNNING THE ELSA WEBSITE
-      */
-
     new ElsaDataApplicationAppRunnerConstruct(this, "AppRunner", {
       vpc: vpc,
       container: container,
-      hostedZoneCertificate: certificate!,
+      // depending on the DNS setup these may or may not be present
       hostedZone: hostedZone,
+      hostedZoneCertificate: hostedZoneCertificate,
+      // this sets the servers concept of where it should live
       deployedUrl: deployedUrl,
       edgeDbSecurityGroup: edgeDbSecurityGroup,
       accessSecretsPolicyStatement:
@@ -145,23 +155,7 @@ export class ElsaDataStack extends Stack {
       ...applicationProps,
     });
 
-    /*const app = new ElsaDataApplicationFargateConstruct(this, "App", {
-      cluster: cluster,
-      container: container,
-      taskDefinition: appDef,
-      hostedZoneCertificate: certificate!,
-      hostedZone: hostedZone,
-      deployedUrl: deployedUrl,
-      edgeDbSecurityGroup: edgeDbSecurityGroup,
-      accessSecretsPolicyStatement:
-        infraClient.getSecretPolicyStatementFromLookup(this),
-      discoverServicesPolicyStatement:
-        infraClient.getCloudMapDiscoveryPolicyStatementFromLookup(this),
-      cloudMapNamespace: namespace,
-      tempBucket: tempBucket,
-      ...applicationProps,
-    }); */
-
+    // the command infrastructure allows us to run admin fargate tasks
     {
       const commandSecurityGroup = new SecurityGroup(
         this,

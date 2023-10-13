@@ -17,7 +17,14 @@ export interface ElsaDataApplicationSettings {
    * The rest of the URL is defined by the infrastructure the application is
    * installed into.
    */
-  readonly urlPrefix: string;
+  readonly urlPrefix?: string;
+
+  /**
+   * The full URL for those applications deployed into somewhere
+   * with externally defined DNS. Note that this represents a URL
+   * so *should* start with "https://".
+   */
+  readonly urlFull?: string;
 
   /**
    * If present instructs the deployment CDK to attempt to build

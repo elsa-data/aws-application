@@ -28,8 +28,9 @@ interface Props extends ElsaDataApplicationSettings {
   readonly cloudMapNamespace: INamespace;
 
   // in anticipation of app runner being able to make CNAME mappings automatically - currently not used
-  readonly hostedZone: IHostedZone;
-  readonly hostedZoneCertificate: ICertificate;
+  readonly hostedZone?: IHostedZone;
+  readonly hostedZoneCertificate?: ICertificate;
+
   readonly deployedUrl: string;
 
   // the security group of our edgedb - that we will put ourselves in to enable access
