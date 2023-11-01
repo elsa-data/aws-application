@@ -19,6 +19,7 @@ import { IBucket } from "aws-cdk-lib/aws-s3";
 import { ContainerConstruct } from "../construct/container-construct";
 import { IHostedZone } from "aws-cdk-lib/aws-route53";
 import { ICertificate } from "aws-cdk-lib/aws-certificatemanager";
+import { CfnWebACL, CfnWebACLAssociation } from "aws-cdk-lib/aws-wafv2";
 
 interface Props extends ElsaDataApplicationSettings {
   readonly vpc: ec2.IVpc;
@@ -108,6 +109,26 @@ export class ElsaDataApplicationAppRunnerConstruct extends Construct {
       autoDeploymentsEnabled: false,
       vpcConnector: vpcConnector,
     });
+
+    if (props.wafRules && props.wafRules.length > 0) {
+      const cfnWebAcl = new CfnWebACL(this, "WebAcl", {
+        defaultAction: {
+          allow: {},
+        },
+        scope: "REGIONAL",
+        visibilityConfig: {
+          cloudWatchMetricsEnabled: true,
+          metricName: "MetricForWebACLCDK",
+          sampledRequestsEnabled: true,
+        },
+        rules: props.wafRules,
+      });
+
+      new CfnWebACLAssociation(this, "WebAclAssociation", {
+        resourceArn: appService.serviceArn,
+        webAclArn: cfnWebAcl.attrArn,
+      });
+    }
 
     // register a cloudMapService for the Application in our namespace
     // chose a sensible default - but allow an alteration in case I guess someone might

@@ -22,7 +22,9 @@ const descriptionWithTag = (tag?: string) =>
 
 // bring this out to the top as it is the type of thing we might want to change during dev
 // to point to other PR branches etc
-const DEV_DEPLOYED_IMAGE_TAG = "0.4.4";
+const DEV_DEPLOYED_IMAGE_TAG = "0.4.7";
+
+let rulePriorityCounter = 0;
 
 /**
  * Stack for dev
@@ -63,6 +65,92 @@ new ElsaDataStack(
       },
       enableAccessPoints: true,
     },
-    databaseName: "elsa_data",
+    databaseName: "elsa_data_nov_2023",
+    wafRules: [
+      {
+        name: "LimitRequests100",
+        priority: rulePriorityCounter++,
+        action: {
+          block: {},
+        },
+        statement: {
+          rateBasedStatement: {
+            // given our site is not one where you'd expect high traffic - we set this to
+            // the minimum, and we will see how that plays out
+            limit: 100,
+            aggregateKeyType: "IP",
+          },
+        },
+        visibilityConfig: {
+          sampledRequestsEnabled: true,
+          cloudWatchMetricsEnabled: true,
+          metricName: "LimitRequests100",
+        },
+      },
+      {
+        name: "AllowedCountriesOnly",
+        priority: rulePriorityCounter++,
+        action: {
+          block: {},
+        },
+        statement: {
+          notStatement: {
+            statement: {
+              geoMatchStatement: {
+                // block traffic if not from below
+                countryCodes: ["AU"],
+              },
+            },
+          },
+        },
+        visibilityConfig: {
+          sampledRequestsEnabled: true,
+          cloudWatchMetricsEnabled: true,
+          metricName: "AllowedCountriesOnly",
+        },
+      },
+      {
+        name: "AWS-AWSManagedRulesCommonRuleSet",
+        priority: rulePriorityCounter++,
+        statement: {
+          managedRuleGroupStatement: {
+            name: "AWSManagedRulesCommonRuleSet",
+            vendorName: "AWS",
+            // an example of how we might want to exclude rules
+            // excludedRules: [
+            //  {
+            //    name: "SizeRestrictions_BODY",
+            //  },
+            //],
+          },
+        },
+        overrideAction: {
+          none: {},
+        },
+        visibilityConfig: {
+          sampledRequestsEnabled: true,
+          cloudWatchMetricsEnabled: true,
+          metricName: "AWS-AWSManagedRulesCommonRuleSet",
+        },
+      },
+      {
+        name: "AWS-AWSManagedRulesAmazonIpReputationList",
+        priority: rulePriorityCounter++,
+        statement: {
+          managedRuleGroupStatement: {
+            vendorName: "AWS",
+            name: "AWSManagedRulesAmazonIpReputationList",
+          },
+        },
+        overrideAction: {
+          none: {},
+        },
+        visibilityConfig: {
+          sampledRequestsEnabled: true,
+          cloudWatchMetricsEnabled: true,
+          metricName: "AWS-AWSManagedRulesAmazonIpReputationList",
+        },
+      },
+    ],
   }
 );
