@@ -1,3 +1,5 @@
+import { CfnWebACL } from "aws-cdk-lib/aws-wafv2";
+
 /**
  * The user settable settings for the Elsa Data application service.
  */
@@ -83,6 +85,12 @@ export interface ElsaDataApplicationSettings {
    * The cpu assigned to the Elsa Data application container - defaults to something sensible
    */
   readonly cpu?: number;
+
+  /**
+   * If present and non-empty - tells us to use these rules for establishing a WAF.
+   * If not present, then no WAF is installed.
+   */
+  readonly wafRules?: CfnWebACL.RuleProperty[];
 }
 
 export interface ElsaDataApplicationBuildLocal {
