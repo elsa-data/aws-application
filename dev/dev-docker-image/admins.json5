@@ -3,36 +3,24 @@
   // user permissions
   superAdmins: [
     {
-      // andrew via CILogon
+      // andrew via CILogon (patto net)
       sub: "http://cilogon.org/serverA/users/46001501",
     },
     {
-      // andrew via AAF production
-      sub: "UKjVh1ELikp6jlpbbKy_jYNS2yiQUKUgvUgThSi9YHI", // pragma: allowlist secret
-    },
-    {
-      // christian via CILogon
-      sub: "http://cilogon.org/serverF/users/25372",
-    },
-    {
-      // christian via AAF production
-      sub: "ewN9s9nsHcRCwDuagqCeTbc4lrrUS8BWwH8TR9Xtc0Y", // pragma: allowlist secret
+      // andrew via CILogon (uni melb)
+      sub: "http://cilogon.org/serverB/users/51445922",
     },
     {
       // william via CILogon
       sub: "http://cilogon.org/serverF/users/24191",
     },
     {
-      // william via AAF production
-      sub: "ipYEZZvH3H2zxnpDtW763N3riVqzYBKi-kDe_OX3tzU", // pragma: allowlist secret
-    },
-    {
       // marko via CILogon
       sub: "http://cilogon.org/serverF/users/31333",
     },
     {
-      // marko via AAF production
-      sub: "GqpKL-YwpaA2B7bwE0Emcx9oRgWsfaT-J2yRbvgJ_Lc", // pragma: allowlist secret
+      // victor via CILogon
+      sub: "http://cilogon.org/serverT/users/45602023",
     },
   ],
 }

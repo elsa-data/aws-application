@@ -1,4 +1,3 @@
-import "source-map-support/register";
 import * as cdk from "aws-cdk-lib";
 import { join } from "path";
 import { ElsaDataStack } from "@elsa-data/aws-application";
@@ -22,8 +21,10 @@ const descriptionWithTag = (tag?: string) =>
 
 // bring this out to the top as it is the type of thing we might want to change during dev
 // to point to other PR branches etc
-const DEV_DEPLOYED_IMAGE_TAG = "0.4.7";
+const DEV_DEPLOYED_IMAGE_TAG = "pr-563";
 
+// waf rules need a priority that we want to base on the order they occur in our
+// declarations - we use this counter for that
 let rulePriorityCounter = 0;
 
 /**
@@ -46,16 +47,16 @@ new ElsaDataStack(
   },
   {
     infrastructureStackName: "ElsaDataDevInfrastructureStack",
-    infrastructureDatabaseInstanceName: "elsa_data_serverless_database",
     isDevelopment: true,
     urlPrefix: "elsa-data",
-    // this image gets inserted as the base of the new image being built via buildLocal
+    // this image gets inserted as the _base_ of the new image being built via buildLocal
+    // so buildLocal gives us a chance to specialise this base image
     imageBaseName: `ghcr.io/elsa-data/elsa-data:${DEV_DEPLOYED_IMAGE_TAG}`,
     buildLocal: {
       folder: join(__dirname, "dev-docker-image"),
     },
     metaConfigSources:
-      "file('base') file('admins') file('datasets') file('sharers') file('dacs') aws-secret('ElsaDataDevDeployed')",
+      "file('base') file('admins') file('datasets') file('sharers') file('consenters') file('dacs') aws-secret('ElsaDataDevDeployed')",
     metaConfigFolders: "/dev-config",
     awsPermissions: {
       dataBucketPaths: {
@@ -65,7 +66,11 @@ new ElsaDataStack(
       },
       enableAccessPoints: true,
     },
-    databaseName: "elsa_data_nov_2023",
+    databaseName: "dev",
+    databaseSource: {
+      cloudDatabaseInstanceName: "umccr/elsa-data",
+      cloudDatabaseSecretName: "ElsaDataDevGelCloudSecret", // pragma: allowlist secret
+    },
     wafRules: [
       {
         name: "LimitRequests100",

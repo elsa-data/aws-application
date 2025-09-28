@@ -1,7 +1,13 @@
-import { aws_ecs as ecs, CfnOutput, Stack, StackProps } from "aws-cdk-lib";
+import {
+  aws_ecs as ecs,
+  aws_secretsmanager as secretsmanager,
+  CfnOutput,
+  Stack,
+  StackProps,
+} from "aws-cdk-lib";
 import { Construct } from "constructs";
 import { ElsaDataStackSettings } from "./elsa-data-stack-settings";
-import { InfrastructureClient } from "@elsa-data/aws-infrastructure-client";
+import { InfrastructureClient } from "@elsa-data/aws-infrastructure/infrastructure-client";
 import { ElsaDataCommandConstruct } from "./command/elsa-data-command-construct";
 import { ClusterConstruct } from "./construct/cluster-construct";
 import { RetentionDays } from "aws-cdk-lib/aws-logs";
@@ -9,7 +15,7 @@ import { ContainerConstruct } from "./construct/container-construct";
 import { TaskDefinitionConstruct } from "./construct/task-definition-construct";
 import { CpuArchitecture, FargateService } from "aws-cdk-lib/aws-ecs";
 import { ElsaDataApplicationAppRunnerConstruct } from "./app/elsa-data-application-app-runner-construct";
-import { SecurityGroup } from "aws-cdk-lib/aws-ec2";
+import { ISecurityGroup, SecurityGroup } from "aws-cdk-lib/aws-ec2";
 import { ICertificate } from "aws-cdk-lib/aws-certificatemanager";
 import { IHostedZone } from "aws-cdk-lib/aws-route53";
 
@@ -17,6 +23,7 @@ export {
   ElsaDataStackSettings,
   ElsaDataApplicationSettings,
   ElsaDataApplicationBuildLocal,
+  ElsaDataApplicationDatabaseSource,
   ElsaDataApplicationAwsPermissions,
 } from "./elsa-data-stack-settings";
 
@@ -42,22 +49,39 @@ export class ElsaDataStack extends Stack {
 
     const namespace = infraClient.getNamespaceFromLookup(this);
 
-    const edgeDbSecurityGroup = infraClient.getEdgeDbSecurityGroupFromLookup(
-      this,
-      applicationProps.infrastructureDatabaseInstanceName
-    );
+    if (!applicationProps.databaseSource.infrastructureDatabaseInstanceName) {
+      if (
+        !applicationProps.databaseSource.cloudDatabaseSecretName ||
+        !applicationProps.databaseSource.cloudDatabaseInstanceName
+      )
+        throw new Error(
+          "If no infrastructure database instance is specified then cloud database secret and cloud database instance must be filled in"
+        );
+    }
 
-    const edgeDbDsnNoPasswordOrDatabase =
-      infraClient.getEdgeDbDsnNoPasswordOrDatabaseFromLookup(
-        this,
-        applicationProps.infrastructureDatabaseInstanceName
-      );
+    const edgeDbSecurityGroup: ISecurityGroup | null = applicationProps
+      .databaseSource.infrastructureDatabaseInstanceName
+      ? infraClient.getEdgeDbSecurityGroupFromLookup(
+          this,
+          applicationProps.databaseSource.infrastructureDatabaseInstanceName
+        )
+      : null;
 
-    const edgeDbAdminPasswordSecret =
-      infraClient.getEdgeDbAdminPasswordSecretFromLookup(
-        this,
-        applicationProps.infrastructureDatabaseInstanceName
-      );
+    const edgeDbDsnNoPasswordOrDatabase = applicationProps.databaseSource
+      .infrastructureDatabaseInstanceName
+      ? infraClient.getEdgeDbDsnNoPasswordOrDatabaseFromLookup(
+          this,
+          applicationProps.databaseSource.infrastructureDatabaseInstanceName
+        )
+      : null;
+
+    const edgeDbAdminPasswordSecret = applicationProps.databaseSource
+      .infrastructureDatabaseInstanceName
+      ? infraClient.getEdgeDbAdminPasswordSecretFromLookup(
+          this,
+          applicationProps.databaseSource.infrastructureDatabaseInstanceName
+        )
+      : null;
 
     const tempBucket = infraClient.getTempBucketFromLookup(this);
 
@@ -99,35 +123,68 @@ export class ElsaDataStack extends Stack {
         "Database name cannot be 'edgedb' as that is reserved for other uses"
       );
 
-    const makeEnvironment = (): { [p: string]: string } => ({
-      // deploy as development only if indicated
-      NODE_ENV: applicationProps.isDevelopment ? "development" : "production",
-      // we have a DSN that has no password or database name
-      EDGEDB_DSN: edgeDbDsnNoPasswordOrDatabase,
-      // we can choose the database name ourselves or default it to something sensible
-      EDGEDB_DATABASE: applicationProps.databaseName ?? "elsa_data",
-      // we don't do EdgeDb certs (our EdgeDb has made self-signed certs) so we must set this
-      EDGEDB_CLIENT_TLS_SECURITY: "insecure",
-      // environment variables set to set up the meta system for Elsa configuration
-      ELSA_DATA_META_CONFIG_FOLDERS:
-        applicationProps.metaConfigFolders || "./config",
-      ELSA_DATA_META_CONFIG_SOURCES: applicationProps.metaConfigSources,
-      // override any config settings that we know definitively here because of the
-      // way we have done the deployment
-      ELSA_DATA_CONFIG_DEPLOYED_URL: deployedUrl,
-      ELSA_DATA_CONFIG_HTTP_HOSTING_PORT: "80",
-      ELSA_DATA_CONFIG_AWS_TEMP_BUCKET: tempBucket.bucketName,
-      ELSA_DATA_CONFIG_SERVICE_DISCOVERY_NAMESPACE: namespace.namespaceName,
-      // only in development are we likely to be using an image that is not immutable
-      // i.e. dev we might use "latest"... but in production we should be using "1.0.1" for example
-      //  props.isDevelopment ? "default" : "once",
-      // until we have everything working - lets leave it at default
-      ECS_IMAGE_PULL_BEHAVIOR: "default",
-    });
+    const makeEnvironment = (): { [p: string]: string } => {
+      const result: { [p: string]: string } = {
+        // we can choose the database name ourselves or default it to something sensible
+        // for cloud gel this is more important to specify as we share different dbs on the same
+        // instance
+        GEL_DATABASE: applicationProps.databaseName ?? "elsa_data",
 
-    const makeEcsSecrets = (): { [p: string]: ecs.Secret } => ({
-      EDGEDB_PASSWORD: ecs.Secret.fromSecretsManager(edgeDbAdminPasswordSecret),
-    });
+        // deploy as development only if indicated
+        NODE_ENV: applicationProps.isDevelopment ? "development" : "production",
+        // environment variables set to set up the meta system for Elsa configuration
+        ELSA_DATA_META_CONFIG_FOLDERS:
+          applicationProps.metaConfigFolders || "./config",
+        ELSA_DATA_META_CONFIG_SOURCES: applicationProps.metaConfigSources,
+        // override any config settings that we know definitively here because of the
+        // way we have done the deployment
+        ELSA_DATA_CONFIG_DEPLOYED_URL: deployedUrl,
+        ELSA_DATA_CONFIG_HTTP_HOSTING_PORT: "80",
+        ELSA_DATA_CONFIG_AWS_TEMP_BUCKET: tempBucket.bucketName,
+        ELSA_DATA_CONFIG_SERVICE_DISCOVERY_NAMESPACE: namespace.namespaceName,
+        // only in development are we likely to be using an image that is not immutable
+        // i.e. dev we might use "latest"... but in production we should be using "1.0.1" for example
+        //  props.isDevelopment ? "default" : "once",
+        // until we have everything working - lets leave it at default
+        ECS_IMAGE_PULL_BEHAVIOR: "default",
+      };
+
+      if (applicationProps.databaseSource.infrastructureDatabaseInstanceName) {
+        // we have a DSN that has no password or database name
+        result["GEL_DSN"] = edgeDbDsnNoPasswordOrDatabase!;
+        // we don't do EdgeDb certs (our EdgeDb has made self-signed certs) so we must set this
+        result["GEL_CLIENT_TLS_SECURITY"] = "insecure";
+      } else {
+        result["GEL_INSTANCE"] =
+          applicationProps.databaseSource.cloudDatabaseInstanceName!;
+      }
+
+      return result;
+    };
+
+    // optionally construct a secret to wrap our gel cloud login
+    const baseSecret = !applicationProps.databaseSource
+      .infrastructureDatabaseInstanceName
+      ? secretsmanager.Secret.fromSecretNameV2(
+          this,
+          "GelCloudSecret",
+          applicationProps.databaseSource.cloudDatabaseSecretName!
+        )
+      : null;
+
+    const makeEcsSecrets = (): { [p: string]: ecs.Secret } => {
+      const result: { [p: string]: ecs.Secret } = {};
+
+      if (applicationProps.databaseSource.infrastructureDatabaseInstanceName) {
+        result["GEL_PASSWORD"] = ecs.Secret.fromSecretsManager(
+          edgeDbAdminPasswordSecret!
+        );
+      } else {
+        result["GEL_SECRET_KEY"] = ecs.Secret.fromSecretsManager(baseSecret!);
+      }
+
+      return result;
+    };
 
     // the Elsa Data container is a shared bundling up of the Elsa Data image
     const container = new ContainerConstruct(this, "Container", {
@@ -179,11 +236,15 @@ export class ElsaDataStack extends Stack {
         logStreamPrefix: "elsa-data-command",
       });
 
+      const securityGroups: ISecurityGroup[] = [commandSecurityGroup];
+
+      if (edgeDbSecurityGroup) securityGroups.push(edgeDbSecurityGroup);
+
       const commandService = new FargateService(this, "CommandService", {
         cluster: cluster.cluster,
         taskDefinition: commandDef.taskDefinition,
         vpcSubnets: cluster.clusterSubnetSelection,
-        securityGroups: [commandSecurityGroup, edgeDbSecurityGroup],
+        securityGroups: securityGroups,
         assignPublicIp: false,
       });
 

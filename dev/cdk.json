@@ -1,4 +1,4 @@
 {
-  "app": "npx ts-node --prefer-ts-exts dev.ts",
+  "app": "npx tsx dev.ts",
   "context": {}
 }

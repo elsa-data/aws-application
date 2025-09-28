@@ -8,16 +8,16 @@
     "destroy": "pnpm -w run build && cdk destroy"
   },
   "devDependencies": {
-    "@tsconfig/node18": "1.0.3",
-    "@types/node": "18.18.1",
-    "aws-cdk": "2.99.1",
-    "aws-cdk-lib": "2.99.1",
-    "constructs": "10.2.70",
-    "ts-node": "10.9.1",
-    "typescript": "5.2.2"
+    "@tsconfig/node22": "22.0.2",
+    "@types/node": "22.15.32",
+    "aws-cdk": "2.1019.1",
+    "aws-cdk-lib": "2.202.0",
+    "constructs": "10.4.2",
+    "tsx": "4.20.3",
+    "typescript": "5.8.3"
   },
   "dependencies": {
-    "cdk-nag": "^2.27.148",
+    "cdk-nag": "^2.36.24",
     "@elsa-data/aws-application": "link:../packages/aws-application"
   }
 }

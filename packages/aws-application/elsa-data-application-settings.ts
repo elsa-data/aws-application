@@ -44,6 +44,8 @@ export interface ElsaDataApplicationSettings {
    */
   readonly imageBaseName: string;
 
+  readonly databaseSource: ElsaDataApplicationDatabaseSource;
+
   /**
    * The name of the database in our database instance - defaults to
    * something sensible if not present.
@@ -103,6 +105,18 @@ export interface ElsaDataApplicationBuildLocal {
   readonly version?: string;
   readonly built?: string;
   readonly revision?: string;
+}
+
+export interface ElsaDataApplicationDatabaseSource {
+  /**
+   * The infrastructure name of the RDS/EdgeDb instance we want to use. This name is
+   * set in our infrastructure stack - it may not match any actual AWS resource name. See
+   * the output SSM of the infrastructure stack to see what database instances are exported.
+   */
+  readonly infrastructureDatabaseInstanceName?: string;
+
+  readonly cloudDatabaseInstanceName?: string;
+  readonly cloudDatabaseSecretName?: string;
 }
 
 export interface ElsaDataApplicationAwsPermissions {

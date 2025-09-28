@@ -26,7 +26,8 @@ interface Props extends ElsaDataApplicationSettings {
   readonly cloudMapNamespace: INamespace;
 
   // the security group of our edgedb - that we will put ourselves in to enable access
-  readonly edgeDbSecurityGroup: ISecurityGroup;
+  // if using the cloud db then this can be null
+  readonly edgeDbSecurityGroup: ISecurityGroup | null;
 
   // a policy statement that we need to add to our running cloudMapService in order to give us access to the secrets
   readonly accessSecretsPolicyStatement: PolicyStatement;
@@ -76,13 +77,20 @@ export class ElsaDataCommandConstruct extends Construct {
     // (i.e all AWS functionality used by Elsa Data code FOR ADMIN TASKS)
     props.taskDefinition.taskDefinition.taskRole.attachInlinePolicy(policy);
 
+    const securityGroups: ISecurityGroup[] = [
+      props.cluster.clusterSecurityGroup,
+    ];
+
+    if (props.edgeDbSecurityGroup)
+      securityGroups.push(props.edgeDbSecurityGroup);
+
     // the command function is an invocable lambda that will then go and spin up an ad-hoc Task in our
     // cluster - we use this for starting admin tasks
     const commandFunction = this.addCommandLambda(
       props.cluster,
       props.container,
       props.taskDefinition,
-      [props.cluster.clusterSecurityGroup, props.edgeDbSecurityGroup],
+      securityGroups,
       props.accessSecretsPolicyStatement,
       props.appService
     );
