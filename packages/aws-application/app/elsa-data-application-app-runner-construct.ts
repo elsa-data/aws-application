@@ -35,7 +35,8 @@ interface Props extends ElsaDataApplicationSettings {
   readonly deployedUrl: string;
 
   // the security group of our edgedb - that we will put ourselves in to enable access
-  readonly edgeDbSecurityGroup: ISecurityGroup;
+  // if cloud db then this can be null
+  readonly edgeDbSecurityGroup: ISecurityGroup | null;
 
   // a policy statement that we need to add to our app service in order to give us access to the secrets
   readonly accessSecretsPolicyStatement: PolicyStatement;
@@ -63,12 +64,17 @@ export class ElsaDataApplicationAppRunnerConstruct extends Construct {
       allowAllOutbound: true,
     });
 
+    const securityGroups: ISecurityGroup[] = [appSecurityGroup];
+
+    if (props.edgeDbSecurityGroup)
+      securityGroups.push(props.edgeDbSecurityGroup);
+
     const vpcConnector = new apprunner.VpcConnector(this, "VpcConnector", {
       vpc: props.vpc,
       vpcSubnets: props.vpc.selectSubnets({
         subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
       }),
-      securityGroups: [appSecurityGroup, props.edgeDbSecurityGroup],
+      securityGroups: securityGroups,
     });
 
     const policy = new Policy(this, "AppRunnerServiceTaskPolicy");

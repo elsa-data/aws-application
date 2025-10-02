@@ -1,6 +1,5 @@
 {
-  // an ontoserver with MONDO terminology loaded
-  ontoFhirUrl: "https://onto.prod.umccr.org/fhir",
+  ontoFhirUrl: "https://tx.ontoserver.csiro.au/fhir",
   releaseKeyPrefix: "R",
   ipLookup: {
     maxMindDbPath: "/dev-config/Geoacumen-Country.mmdb",

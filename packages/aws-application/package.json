@@ -26,21 +26,21 @@
     "outdir": "dist",
     "targets": {}
   },
-  "dependencies": {},
+  "dependencies": {
+    "@elsa-data/aws-infrastructure": "^1.6.0"
+  },
   "peerDependencies": {
-    "aws-cdk-lib": "^2.99.1",
-    "constructs": "^10.2.70",
-    "@elsa-data/aws-infrastructure-client": "^1.3.8"
+    "aws-cdk-lib": "^2.202.0",
+    "constructs": "^10.4.2"
   },
   "devDependencies": {
-    "@types/node": "18.18.1",
-    "aws-cdk": "2.99.1",
-    "aws-cdk-lib": "2.99.1",
-    "@aws-cdk/aws-apprunner-alpha": "2.99.1-alpha.0",
-    "constructs": "10.2.70",
-    "jsii": "5.2.10",
-    "jsii-pacmak": "1.89.0",
-    "publib": "0.2.737",
-    "typescript": "5.2.2"
+    "@types/node": "22.15.32",
+    "aws-cdk-lib": "2.202.0",
+    "@aws-cdk/aws-apprunner-alpha": "2.202.0-alpha.0",
+    "constructs": "10.4.2",
+    "jsii": "5.8.12",
+    "jsii-pacmak": "1.112.0",
+    "publib": "0.2.1000",
+    "typescript": "5.8.3"
   }
 }

@@ -38,7 +38,9 @@ export class DockerServiceWithHttpsLoadBalancerConstruct extends Construct {
     this.service = new ApplicationLoadBalancedFargateService(this, "Service", {
       cluster: props.cluster.cluster,
       certificate: props.hostedZoneCertificate,
-      sslPolicy: SslPolicy.RECOMMENDED,
+      // meets AWS security controls ELB.17 - supports TLS 1.3 and TLS 1.2 with forward secrecy
+      // note that the underlying policy string can evolve over time as the CDK/recommended changes
+      sslPolicy: SslPolicy.TLS13_13,
       domainName: `${props.hostedPrefix}.${props.hostedZone.zoneName}`,
       domainZone: props.hostedZone,
       redirectHTTP: true,
