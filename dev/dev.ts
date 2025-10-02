@@ -21,7 +21,7 @@ const descriptionWithTag = (tag?: string) =>
 
 // bring this out to the top as it is the type of thing we might want to change during dev
 // to point to other PR branches etc
-const DEV_DEPLOYED_IMAGE_TAG = "pr-563";
+const DEV_DEPLOYED_IMAGE_TAG = "dev";
 
 // waf rules need a priority that we want to base on the order they occur in our
 // declarations - we use this counter for that

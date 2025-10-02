@@ -24,5 +24,11 @@
       description: "KAOS",
       loader: "dev",
     },
+    {
+      uri: "urn:doi:10.example-not-real/control",
+      name: "CONTROL",
+      description: "CONTROL",
+      loader: "dev",
+    },
   ],
 }
